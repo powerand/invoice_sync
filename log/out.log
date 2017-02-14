@@ -1,0 +1,217 @@
+2017-01-26 19:26:30 +0300, GET, /
+2017-01-26 19:26:31 +0300, GET, /
+exiting
+2017-01-26 19:26:38 +0300, GET, /
+2017-01-26 20:05:39 +0300, GET, /
+2017-01-26 20:06:00 +0300, GET, /
+exiting
+2017-01-27 15:01:24 +0300, GET, /
+2017-01-27 15:01:28 +0300, GET, /run.rb
+2017-01-27 15:01:54 +0300, GET, /
+2017-01-27 15:02:54 +0300, GET, /
+2017-01-27 15:03:07 +0300, GET, /
+2017-01-27 15:03:23 +0300, GET, /
+2017-01-27 15:03:29 +0300, GET, /
+[?1034h(byebug) 2017-01-27 15:03:56 +0300, GET, /
+Return value is: nil
+
+[139, 148] in /root/invoice_sync/server.rb
+   139:         begin
+   140:           eval(interpolation[/\<\%(.+?)\%\>/m, 1])
+   141:         rescue => err
+   142:           byebug
+   143:         end
+=> 144:       end
+   145:     end
+   146:     socket.puts "Content-Length: #{body.bytesize}"
+   147:     socket.puts "Connection: keep-alive"
+   148:     socket.puts
+exiting
+2017-02-13 21:01:38 +0300, GET, /
+
+
+обработка: |======================================на vselampi потратил 0.016388674
+на allmar потратил 0.018616173
+============================================================================на ojax потратил 0.019849048
+=============================================================================|
+на funale потратил 0.032231111
+на fener потратил 0.037031488
+master процесс потратил 0.094458684
+Broken pipe
+2017-02-13 21:01:39 +0300, GET, /
+
+
+обработка: |======================================на vselampi потратил 0.014866634
+на allmar потратил 0.01529138
+=========================================================================================================================================================|
+на ojax потратил 0.01883226
+на fener потратил 0.022943177
+на funale потратил 0.036451481
+master процесс потратил 0.096750136
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+2017-02-13 21:06:14 +0300, GET, /
+
+
+обработка: |=============на vselampi потратил 0.016876967
+=============на funale потратил 0.032297806
+на allmar потратил 0.031127693
+=========================================|
+на ojax потратил 0.035656117
+на fener потратил 0.035424273
+master процесс потратил 0.097564951
+2017-02-13 21:06:18 +0300, GET, /
+
+
+обработка: |=============на vselampi потратил 0.017524361
+на allmar потратил 0.018274279
+======================================================|
+на funale потратил 0.032535707
+на fener потратил 0.036455015
+на ojax потратил 0.033186464
+master процесс потратил 0.095364407
+2017-02-13 21:06:21 +0300, GET, /
+
+
+обработка: |=============на vselampi потратил 0.015982297
+=============на allmar потратил 0.020711173
+на fener потратил 0.021252914
+=========================================|
+на funale потратил 0.03457135
+на ojax потратил 0.035993079
+master процесс потратил 0.090689626
+2017-02-13 21:07:17 +0300, GET, /
+
+
+обработка: |=============на vselampi потратил 0.017857155
+на funale потратил 0.031694784
+на allmar потратил 0.032552399
+======================================================|
+на ojax потратил 0.034969028
+на fener потратил 0.034742927
+master процесс потратил 0.093213472
+2017-02-13 21:07:18 +0300, GET, /
+
+
+обработка: |=============на vselampi потратил 0.016381195
+на allmar потратил 0.018367035
+===========================на ojax потратил 0.021682682
+на funale потратил 0.034236236
+===========================|
+на fener потратил 0.041192648
+master процесс потратил 0.102519909
+2017-02-13 21:07:18 +0300, GET, /favicon.ico
+2017-02-13 21:07:19 +0300, GET, /
+
+
+обработка: |=============на vselampi потратил 0.016336561
+на allmar потратил 0.017616405
+===========================на ojax потратил 0.018732218
+===========================|
+на fener потратил 0.035329092
+на funale потратил 0.035982172
+master процесс потратил 0.101879913
+2017-02-13 21:07:19 +0300, GET, /favicon.ico
+2017-02-13 21:07:19 +0300, GET, /
+
+
+обработка: |===================================================================|
+на fener потратил 0.020069257
+на vselampi потратил 0.032106884
+на allmar потратил 0.01973694
+на funale потратил 0.033564223
+на ojax потратил 0.03430999
+master процесс потратил 0.089405057
+2017-02-13 21:07:20 +0300, GET, /favicon.ico
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+2017-02-13 23:19:25 +0300, GET, /
+
+
+обработка: |execution expired
+2017-02-13 23:19:32 +0300, GET, /
+
+
+обработка: |execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+execution expired
+exiting
+exiting

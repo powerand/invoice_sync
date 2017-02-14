@@ -1,0 +1,35 @@
+/root/invoice_sync/server.rb:24:in `initialize': Address already in use - bind(2) for nil port 81 (Errno::EADDRINUSE)
+	from /root/invoice_sync/server.rb:24:in `new'
+	from /root/invoice_sync/server.rb:24:in `<top (required)>'
+	from /usr/local/lib/ruby/2.4.0/rubygems/core_ext/kernel_require.rb:55:in `require'
+	from /usr/local/lib/ruby/2.4.0/rubygems/core_ext/kernel_require.rb:55:in `require'
+	from ./server:15:in `block in <main>'
+	from ./server:12:in `fork'
+	from ./server:12:in `<main>'
+/usr/local/lib/ruby/gems/2.4.0/gems/byebug-9.0.6/lib/byebug/interfaces/local_interface.rb:23:in `readline': Input/output error - read (Errno::EIO)
+	from /usr/local/lib/ruby/gems/2.4.0/gems/byebug-9.0.6/lib/byebug/interfaces/local_interface.rb:23:in `block in readline'
+	from /usr/local/lib/ruby/gems/2.4.0/gems/byebug-9.0.6/lib/byebug/interfaces/local_interface.rb:35:in `with_repl_like_sigint'
+	from /usr/local/lib/ruby/gems/2.4.0/gems/byebug-9.0.6/lib/byebug/interfaces/local_interface.rb:23:in `readline'
+	from /usr/local/lib/ruby/gems/2.4.0/gems/byebug-9.0.6/lib/byebug/interface.rb:69:in `prepare_input'
+	from /usr/local/lib/ruby/gems/2.4.0/gems/byebug-9.0.6/lib/byebug/interface.rb:53:in `read_input'
+	from /usr/local/lib/ruby/gems/2.4.0/gems/byebug-9.0.6/lib/byebug/interface.rb:36:in `read_command'
+	from /usr/local/lib/ruby/gems/2.4.0/gems/byebug-9.0.6/lib/byebug/processors/command_processor.rb:129:in `repl'
+	from /usr/local/lib/ruby/gems/2.4.0/gems/byebug-9.0.6/lib/byebug/processors/command_processor.rb:98:in `process_commands'
+	from /usr/local/lib/ruby/gems/2.4.0/gems/byebug-9.0.6/lib/byebug/processors/command_processor.rb:78:in `at_return'
+	from /usr/local/lib/ruby/gems/2.4.0/gems/byebug-9.0.6/lib/byebug/context.rb:128:in `at_return'
+	from /root/invoice_sync/server.rb:144:in `block (2 levels) in <top (required)>'
+	from /root/invoice_sync/server.rb:138:in `gsub'
+	from /root/invoice_sync/server.rb:138:in `block in <top (required)>'
+	from /root/invoice_sync/server.rb:92:in `loop'
+	from /root/invoice_sync/server.rb:92:in `<top (required)>'
+	from /usr/local/lib/ruby/2.4.0/rubygems/core_ext/kernel_require.rb:55:in `require'
+	from /usr/local/lib/ruby/2.4.0/rubygems/core_ext/kernel_require.rb:55:in `require'
+	from ./server:15:in `block in <main>'
+	from ./server:12:in `fork'
+	from ./server:12:in `<main>'
+umount: /root/invoice_sync/public: device is busy.
+        (In some cases useful info about processes that use
+         the device is found by lsof(8) or fuser(1))
+umount: /root/invoice_sync/public: device is busy.
+        (In some cases useful info about processes that use
+         the device is found by lsof(8) or fuser(1))

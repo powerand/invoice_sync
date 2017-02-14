@@ -1,0 +1,22 @@
+<%
+stores = []
+checked = nil
+@params.each do |key, val|
+  if key == 'neobes'
+    stores.each do |store|
+      store << val
+    end
+  elsif key == 'checked'
+    checked = val == 'true'
+    raise 'неправильный val' if !checked && val != 'false'
+  else
+    val.split(HTML_DELIMIER).each_with_index do |key_part, index|
+      stores[index] ||= []
+      stores[index] << key_part
+    end
+  end
+end
+stores.each do |store|
+  REDIS.set(store.join(HTML_DELIMIER), checked)
+end
+%>

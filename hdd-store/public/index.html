@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>отгрузки</title>
+    <script type="text/javascript">
+    var tbl_content;
+    function reload_data(){
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', document.location.href, true);
+      xhr.setRequestHeader('X-RMXHR', '1');
+      xhr.send();
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState != 4) return;
+        if (xhr.status == 200) {
+          localStorage.setItem('tbl_content_scroll_top', tbl_content.scrollTop);
+          document.open();
+          document.write(xhr.responseText);
+          document.close();
+          return true;
+        } else if(xhr.status == 204) {
+        } else {
+          console.error(xhr.status + ': ' + xhr.statusText);
+        }
+        setTimeout(reload_data, 2000);
+      }
+    }
+    document.addEventListener("DOMContentLoaded", function(){
+      var result = <% require('run.rb'); run; @result %>,
+          main_table = document.getElementById('main_table'),
+          head_table = document.getElementById('head_table');
+      tbl_content = document.getElementsByClassName('tbl-content')[0];
+      for(var item in result) {
+        var tr = document.createElement('tr'),
+            svalues = result[item]
+            actions = '';
+        for(var i = 2; i >= 0; i--) {
+          actions += '<input type="checkbox" class="flag"'+(svalues['CHECKEDS'][i] ? ' checked' : '')+'>';
+        }
+        svalues['ACTIONS'] = actions;
+        for(var key in svalues) {
+          var td = document.createElement('td'),
+              ival = svalues[key];
+          if(key == 'PRODUCTS') {
+            tr.setAttribute('products', ival.join('; '));
+          }
+          if(key == 'PRODUCTS' || key == 'CHECKEDS') {
+            continue;
+          }
+          if(Array.isArray(ival)) {
+            td.innerHTML = ival.join('; ');
+          } else {
+            td.innerHTML = ival;
+          }
+          if(key == 'NAME' || key == 'COMMENT') {
+            td.classList.add('long_text');
+            td.setAttribute('title', ival);
+          }
+          if(key == 'ORDERS') td.classList.add('orders');
+          if(key == 'SITES') td.classList.add('sites');
+          if(key == 'COMMENT') td.classList.add('comment');
+          tr.appendChild(td);
+        }
+        main_table.children[0].appendChild(tr);
+      }
+      Array.prototype.forEach.call(document.getElementsByClassName('flag'), function(flag) {
+        flag.onchange = function() {
+          var thas = this,
+              tr = thas.parentElement.parentElement,
+              products = tr.getAttribute('products'),
+              sites = tr.getElementsByClassName('sites')[0].textContent,
+              orders = tr.getElementsByClassName('orders')[0].textContent,
+              thus = thas,
+              neobes = 0;
+          while(thus = thus.nextElementSibling){ neobes += 1; }
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', '/save_flag?products='+products+'&sites='+sites+'&orders='+orders+'&checked='+thas.checked+'&neobes='+neobes, true);
+          xhr.send();
+          xhr.onreadystatechange = function() {
+            if (xhr.readyState != 4) return;
+            thas.disabled = false;
+            if (xhr.status != 200) {
+              console.error(xhr.status + ': ' + xhr.statusText);
+              thas.checked = thas.checked ?  false : true;
+            }
+          }
+        }
+      });
+      Array.prototype.forEach.call(document.getElementsByClassName('comment'), function(comment) {
+        comment.onclick = function() {
+          this.textContent = prompt('введите коментарий', this.textContent);
+          var thas = this,
+              tr = thas.parentElement,
+              products = tr.getAttribute('products'),
+              sites = tr.getElementsByClassName('sites')[0].textContent,
+              orders = tr.getElementsByClassName('orders')[0].textContent,
+              thus = thas;
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', '/save_text?products='+products+'&sites='+sites+'&orders='+orders+'&text='+thas.textContent, true);
+          xhr.send();
+          xhr.onreadystatechange = function() {
+            if (xhr.readyState != 4) return;
+            if (xhr.status != 200) {
+              console.error(xhr.status + ': ' + xhr.statusText);
+            }
+          }
+        }
+      });
+      tbl_content.scrollTop = localStorage.getItem('tbl_content_scroll_top');
+      document.getElementById('print_table').onclick = function(){
+        newWin= window.open("");
+        newWin.document.write(main_table.outerHTML);
+        var print_main_table = newWin.document.getElementById('main_table'),
+            print_main_table_row = print_main_table.createTHead().insertRow(0),
+            thcs = head_table.tHead.rows[0].cells,
+            stylesheet = newWin.document.createElement('style');
+        for (var i=thcs.length-1; i >= 0; i--) {
+          print_main_table_row.insertCell(0).innerHTML = thcs[i].innerHTML;
+        }
+        stylesheet.innerHTML = 'td.long_text { max-width:200px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis }';
+        print_main_table.border='1';
+        newWin.document.head.appendChild(stylesheet);
+        newWin.print();
+        newWin.close();
+      }
+      setTimeout(reload_data, 2000);
+    });
+    window.onbeforeunload = function(){
+      Array.prototype.forEach.call(document.getElementsByClassName('flag'), function(flag) {
+        flag.setAttribute('disabled', true);
+      });
+    }
+    </script>
+    <style type="text/css">
+    html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, pre, a, abbr, acronym, address, big, cite, code, del, dfn, em, img, ins, kbd, q, s, samp, small, strike, strong, sub, sup, tt, var, b, u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, caption, tbody, tfoot, thead, tr, th, td, article, aside, canvas, details, embed, figure, figcaption, footer, header, hgroup, menu, nav, output, ruby, section, summary, time, mark, audio, video {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      font-size: 100%;
+      font: inherit;
+      vertical-align: baseline;
+      box-sizing: border-box;
+    }
+    table {
+        border-collapse: collapse;
+        border-spacing: 0;
+    }
+    body {
+        background: #fff;
+        font-family: 'Roboto', sans-serif;
+    }
+    html, body {
+      height: 100%;
+    }
+    .tbl-header {
+      background-color: rgba(255,152,0,1);
+      height: 54px;
+    }
+    .tbl-content {
+        height: calc(100% - 54px);
+        overflow-x: auto;
+        margin-top: 0px;
+        border: 0;
+    }
+    table {
+        width: 100%;
+        table-layout: fixed;
+    }
+    th {
+        padding: 20px 15px;
+        text-align: left;
+        font-weight: 500;
+        font-size: 12px;
+        color: #000;
+        text-transform: uppercase;
+    }
+    td {
+        padding: 0 15px;
+        text-align: left;
+        vertical-align: middle;
+        font-weight: 300;
+        font-size: 12px;
+        color: #000;
+        border-bottom: solid 1px rgba(255,255,255,0.1);
+    }
+    tbody > tr:hover {
+      background-color: rgba(255,152,0,0.5);
+    }
+    ::-webkit-scrollbar {
+        width: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+        -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+    }
+    ::-webkit-scrollbar-track {
+        -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+    }
+    .long_text {
+      width: 300px;
+      overflow:hidden; 
+      white-space:nowrap; 
+      text-overflow: ellipsis;
+    }
+    #settings {
+        background-color: #000;
+        color: #fff;
+        padding: 15px;
+        height: 54px;
+    }
+    .delimier {
+      border-left: 1px dotted #555;
+      margin: -20px 20px;
+    }
+    input.flag {
+      margin-left: 0px;
+      margin-right: 6px;
+    }
+    .comment {
+      cursor: pointer;
+    }
+    body > section {
+      height: calc(100% - 54px);
+    }
+    </style>
+  </head>
+  <body>
+    <form action="/" id="settings">
+      <label>от: <input type="date" name="from" value="<% @date_from %>"></label>
+      <span class="delimier"></span>
+      <label>до: <input type="date" name="to" value="<% @date_to %>"></label>
+      <span class="delimier"></span>
+      <input type="submit" value="ок">
+      <span class="delimier"></span>
+      <input type="button" id="print_table" value="Печать">
+    </form>
+    <section>
+      <div class="tbl-header" style="padding-right: 6px;">
+        <table id="head_table" cellpadding="0" cellspacing="0" border="0">
+          <thead>
+            <tr>
+              <th>артикул</th>
+              <th>бренд</th>
+              <th class="long_text">название</th>
+              <th>количество</th>
+              <th>сайты</th>
+              <th>заказы</th>
+              <th>даты отгрузки</th>
+              <th class="long_text">коментарий</th>
+              <th>статус флаги</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+      <div class="tbl-content">
+        <table id="main_table">
+          <tbody>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </body>
+</html>

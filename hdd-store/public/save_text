@@ -1,0 +1,18 @@
+<%
+require 'uri'
+stores = []
+text = nil
+@params.each do |key, val|
+  if key == 'text'
+    text = URI.unescape(val)
+  else
+    val.split(HTML_DELIMIER).each_with_index do |key_part, index|
+      stores[index] ||= []
+      stores[index] << key_part
+    end
+  end
+end
+stores.each do |store|
+  REDIS.set(store.join(HTML_DELIMIER), text)
+end
+%>

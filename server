@@ -1,0 +1,18 @@
+#!/usr/bin/env ruby
+
+$:.unshift File.dirname(__FILE__)
+
+if %w(stop restart).include?(ARGV[0])
+  File.open('server.pid', 'r') { |file| system("kill -2 #{file.read}") }
+  if ARGV[0] == 'stop'
+    exit
+  end
+end
+
+pid = Process.fork do
+  $stdout.reopen(File.join('log', "out.log"), "a")
+  $stderr.reopen(File.join('log', "err.log"), "a")
+  require 'server.rb'
+end
+
+File.open('server.pid', 'w') { |file| file.write(pid) }
