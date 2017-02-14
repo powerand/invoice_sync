@@ -98,7 +98,7 @@ loop do
   socket = SERVER.accept
   # Thread.start(SERVER.accept) do |socket|
     begin
-      # Timeout.timeout(7) do
+      Timeout.timeout(7) do
         request_headers, request_body = socket.recvmsg[0].split(HBD)
         puts "empty message" && next unless request_headers
         request_headers = request_headers.split(EOL)
@@ -142,7 +142,7 @@ loop do
         if file_content_type[/^text\//]
           body = body.gsub(/\<\%.+?\%\>/m) do |interpolation|
             begin
-              eval(interpolation[/\<\%(.+?)\%\>/m, 1], binding)
+              eval(interpolation[/\<\%(.+?)\%\>/m, 1])
             rescue => err
               byebug
             end
@@ -169,7 +169,7 @@ loop do
           socket.puts
           socket.print body
         end
-      # end
+      end
     rescue Errno::EPIPE => err
       puts err
       retry
