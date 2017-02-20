@@ -1,0 +1,39 @@
+<%
+require 'net/imap'
+require 'net/smtp'
+require 'date'
+require 'nkf'
+require 'byebug'
+MAILBOX = 'info@vselampi.ru'
+ARTICULES = @params['articules'].split(';%20').join("\n")
+BRANDS = @params['brands'].split(';%20').join("\n")
+smtp = Net::SMTP.new('smtp.yandex.ru', 465)
+smtp.enable_ssl
+smtp.enable_tls
+smtp.start('vselampi.ru', MAILBOX, 'david391064', :login)
+message = <<MESSAGE
+From: ООО Гудс <#{MAILBOX}>
+To: OOO Гудс <#{MAILBOX}>
+MIME-Version: 1.0
+Content-type: text/html
+Subject: Новый заказ
+Sender: invoice_sync
+
+#{ARTICULES}
+
+<b>This is HTML message.</b>
+<h1>This is headline.</h1>
+MESSAGE
+SEND_AT = DateTime.now
+smtp.send_message(message, MAILBOX, MAILBOX)
+smtp.quit
+imap = Net::IMAP.new('imap.yandex.ru', 993, ssl: true)
+imap.login(MAILBOX, 'david391064')
+imap.select('INBOX')
+uix = imap.responses["EXISTS"][-1]
+result = "https://mail.yandex.ru/?dpda=yes&uid=1130000002755703&login=info#compose/#{161285161655259765+uix}?oper=forward"
+imap.expunge
+imap.logout
+imap.disconnect
+result
+%>

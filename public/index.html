@@ -9,6 +9,7 @@
       var xhr = new XMLHttpRequest();
       xhr.open('GET', document.location.href, true);
       xhr.setRequestHeader('X-RMXHR', '1');
+      xhr.overrideMimeType('text/plain');
       xhr.send();
       xhr.onreadystatechange = function() {
         if (xhr.readyState != 4) return;
@@ -17,6 +18,10 @@
           document.open();
           document.write(xhr.responseText);
           document.close();
+          indicator.style.backgroundColor = 'yellow';
+          setTimeout(function(){
+            indicator.style.backgroundColor = '';
+          }, 100);
           return true;
         } else if(xhr.status == 204) {
         } else {
@@ -25,64 +30,121 @@
         setTimeout(reload_data, 2000);
       }
     }
+    function fire_event(element, event_name) {
+      if ("createEvent" in document) {
+        var evt = document.createEvent("HTMLEvents");
+        evt.initEvent(event_name, false, true);
+        element.dispatchEvent(evt);
+      }
+      else {
+        element.fireEvent('on'+event_name);
+      }
+    }
     document.addEventListener("DOMContentLoaded", function(){
       var result = <% require('run.rb'); run; @result %>,
           main_table = document.getElementById('main_table'),
-          head_table = document.getElementById('head_table');
+          head_table = document.getElementById('head_table'),
+          indicator = document.getElementById('indicator'),
+          check_all = document.getElementById('check_all'),
+          email_window;
       tbl_content = document.getElementsByClassName('tbl-content')[0];
       for(var item in result) {
         var tr = document.createElement('tr'),
-            svalues = result[item]
-            actions = '';
-        for(var i = 2; i >= 0; i--) {
-          actions += '<input type="checkbox" class="flag"'+(svalues['CHECKEDS'][i] ? ' checked' : '')+'>';
-        }
-        svalues['ACTIONS'] = actions;
+            svalues = result[item];
         for(var key in svalues) {
           var td = document.createElement('td'),
               ival = svalues[key];
           if(key == 'PRODUCTS') {
             tr.setAttribute('products', ival.join('; '));
           }
-          if(key == 'PRODUCTS' || key == 'CHECKEDS') {
+          if(key == 'PRODUCTS') {
             continue;
           }
-          if(Array.isArray(ival)) {
-            td.innerHTML = ival.join('; ');
-          } else {
-            td.innerHTML = ival;
+          if(key == 'ST1') {
+            td.classList.add('medium_text', 'order_now_container');
+            ival = '<input class="st1" type="number" value="' + ival + '" max=' + svalues['QUANTITYS'].reduce(function(a, b){ return a + b; }, 0) + ' min=0>';
+            ival += '<input class="input_neobe_checkbox order_now" type="checkbox">';
           }
-          if(key == 'NAME' || key == 'COMMENT') {
+          if(key == 'ST2') {
+            td.classList.add('ordered');
+          }
+          if(key == 'NAME' || key == 'COMMENTS') {
             td.classList.add('long_text');
             td.setAttribute('title', ival);
           }
+          if(Array.isArray(ival)) {
+            if(key == 'QUANTITYS') {
+              var is_multival = ival.length > 1,
+                  pref = is_multival ? '<span class="gray">' : '',
+                  suff = is_multival ? '</span>' : '';
+              td.innerHTML = pref + ival.join('+') + (is_multival ? '=' : '') + suff + (is_multival ? ival.reduce(function(a, b){ return a + b; }, 0) : '');
+            } else {
+              td.innerHTML = ival.join('; ');
+            }
+          } else {
+            td.innerHTML = ival;
+          }
+          if(key == 'QUANTITYS') td.classList.add('quantitys');
           if(key == 'ORDERS') td.classList.add('orders');
           if(key == 'SITES') td.classList.add('sites');
-          if(key == 'COMMENT') td.classList.add('comment');
+          if(key == 'ARTICULE') td.classList.add('articule');
+          if(key == 'BRAND') td.classList.add('brand');
+          if(key == 'COMMENTS') td.classList.add('comment');
           tr.appendChild(td);
         }
         main_table.children[0].appendChild(tr);
       }
-      Array.prototype.forEach.call(document.getElementsByClassName('flag'), function(flag) {
-        flag.onchange = function() {
+      Array.prototype.forEach.call(document.getElementsByClassName('st1'), function(st1) {
+        st1.onchange = function() {
           var thas = this,
               tr = thas.parentElement.parentElement,
               products = tr.getAttribute('products'),
+              quantitys = tr.getElementsByClassName('quantitys')[0].textContent,
               sites = tr.getElementsByClassName('sites')[0].textContent,
               orders = tr.getElementsByClassName('orders')[0].textContent,
+              order_now_element = tr.getElementsByClassName('order_now')[0],
               thus = thas,
-              neobes = 0;
-          while(thus = thus.nextElementSibling){ neobes += 1; }
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', '/save_flag?products='+products+'&sites='+sites+'&orders='+orders+'&checked='+thas.checked+'&neobes='+neobes, true);
+              n = 0,
+              old_value = thas.defaultValue;
+          while(thus = thus.nextElementSibling){ n += 1; }
+          var xhr = new XMLHttpRequest(),
+              value = thas.value;
+          value = quantitys.split('=')[0].split('+').map(function(quantity){
+            quantity = parseInt(quantity);
+            value -= quantity;
+            if(value >= 0) {
+              return quantity;
+            } else {
+              return Math.max(0, quantity + value);
+            }
+          }).join('; ');
+          xhr.open('GET', '/save_st?products='+products+'&sites='+sites+'&orders='+orders+'&n='+n+'&value='+value, true);
           xhr.send();
+          indicator.style.backgroundColor = 'red';
           xhr.onreadystatechange = function() {
             if (xhr.readyState != 4) return;
-            thas.disabled = false;
-            if (xhr.status != 200) {
+            if (xhr.status == 200) {
+              thas.defaultValue = thas.value;
+            } else {
               console.error(xhr.status + ': ' + xhr.statusText);
-              thas.checked = thas.checked ?  false : true;
+              thas.value = old_value;
             }
+            indicator.style.backgroundColor = '';
+          }
+          order_now_element.checked = this.value == this.attributes['max'].value;
+        }
+      });
+      Array.prototype.forEach.call(document.getElementsByClassName('order_now'), function(order_now) {
+        order_now.onchange = function() {
+          var st1 = this.parentElement.getElementsByClassName('st1')[0];
+          st1.value = st1.attributes[this.checked ? 'max' : 'min'].value;
+          if ("createEvent" in document) {
+            var evt = document.createEvent("HTMLEvents");
+            evt.initEvent("change", false, true);
+            st1.dispatchEvent(evt);
+          }
+          else {
+            st1.fireEvent("onchange");
           }
         }
       });
@@ -98,37 +160,113 @@
           var xhr = new XMLHttpRequest();
           xhr.open('GET', '/save_text?products='+products+'&sites='+sites+'&orders='+orders+'&text='+thas.textContent, true);
           xhr.send();
+          indicator.style.backgroundColor = 'red';
           xhr.onreadystatechange = function() {
             if (xhr.readyState != 4) return;
             if (xhr.status != 200) {
               console.error(xhr.status + ': ' + xhr.statusText);
             }
+            indicator.style.backgroundColor = '';
           }
         }
       });
       tbl_content.scrollTop = localStorage.getItem('tbl_content_scroll_top');
-      document.getElementById('print_table').onclick = function(){
-        newWin= window.open("");
-        newWin.document.write(main_table.outerHTML);
-        var print_main_table = newWin.document.getElementById('main_table'),
+      document.getElementById('print_table').onclick = function() {
+        newWin = window.open("");
+        var print_main_table = newWin.document.body.appendChild(document.createElement('table')),
             print_main_table_row = print_main_table.createTHead().insertRow(0),
-            thcs = head_table.tHead.rows[0].cells,
-            stylesheet = newWin.document.createElement('style');
+            thcs = head_table.tHead.rows[0].cells;
         for (var i=thcs.length-1; i >= 0; i--) {
-          print_main_table_row.insertCell(0).innerHTML = thcs[i].innerHTML;
+          var cell = print_main_table_row.insertCell(0);
+          cell.innerHTML = thcs[i].innerHTML;
+          cell.classList = thcs[i].classList;
         }
+        print_main_table.innerHTML += main_table.innerHTML;
+        var stylesheet = newWin.document.createElement('style');
         stylesheet.innerHTML = 'td.long_text { max-width:200px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis }';
-        print_main_table.border='1';
+        stylesheet.innerHTML += 'input[type=number] { width: 40px }';
+        stylesheet.innerHTML += '.order_now_container { display: none }';
+        stylesheet.innerHTML += 'table { border: 1px solid #ccc } thead > tr > td { background-color: #ccc }';
         newWin.document.head.appendChild(stylesheet);
         newWin.print();
         newWin.close();
       }
+      document.getElementById('email_to_provider').onclick = function() {
+        if(typeof(email_window) != 'undefined') email_window.close();
+        email_window = window.open('email', '_blank');
+        var articules = [], brands = [];
+        Array.prototype.forEach.call(document.getElementsByClassName('st1'), function(st1) {
+          var value = st1.value;
+          if(value > 0) {
+            var tr = st1.parentElement.parentElement,
+                products = tr.getAttribute('products'),
+                sites = tr.getElementsByClassName('sites')[0].textContent,
+                orders = tr.getElementsByClassName('orders')[0].textContent,
+                quantitys = tr.getElementsByClassName('quantitys')[0].textContent,
+                articule = tr.getElementsByClassName('articule')[0].textContent,
+                brand = tr.getElementsByClassName('brand')[0].textContent,
+                ordered_element = tr.getElementsByClassName('ordered')[0];
+            articules.push(articule);
+            brands.push(brand);
+            value = quantitys.split('=')[0].split('+').map(function(quantity){
+              quantity = parseInt(quantity);
+              value -= quantity;
+              if(value >= 0) {
+                return quantity;
+              } else {
+                return Math.max(0, quantity + value);
+              }
+            }).join('; ');
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/save_st?products='+products+'&sites='+sites+'&orders='+orders+'&n=2'+'&value='+value, true);
+            xhr.send();
+            xhr.onreadystatechange = function() {
+              if (xhr.readyState != 4) return;
+              if (xhr.status == 200) {
+                ordered_element.textContent = parseInt(ordered_element.textContent) + parseInt(st1.value);
+                st1.value = 0;
+                fire_event(st1, 'change');
+              } else {
+              }
+            }
+          }
+        });
+        var xhr2 = new XMLHttpRequest();
+        xhr2.open('GET', '/create_email?articules='+articules.join(';%20')+'&brands='+brands.join(';%20'), true);
+        xhr2.send();
+        xhr2.onreadystatechange = function() {
+          if (xhr2.readyState != 4) return;
+          if (xhr2.status == 200) {
+            email_window.location.href = xhr2.responseText;
+          } else {
+          }
+        }
+      }
+      if((!!window.opr && !!opr.addons) || !!window.opera || navigator.userAgent.indexOf(' OPR/') >= 0) {
+        browsers_classname = 'opera';
+      } else if(typeof InstallTrigger !== 'undefined') {
+        browsers_classname = 'firefox';
+      } else if(/constructor/i.test(window.HTMLElement) || (function (p) { return p.toString() === "[object SafariRemoteNotification]"; })(!window['safari'] || safari.pushNotification)) {
+        browsers_classname = 'safari';
+      } else if(/*@cc_on!@*/false || !!document.documentMode) {
+        browsers_classname = 'ie';
+      } else if(!!window.StyleMedia) {
+        browsers_classname = 'edge';
+      } else if(!!window.chrome && !!window.chrome.webstore) {
+        browsers_classname = 'chrome';
+      }
+      document.body.classList.add(browsers_classname);
+      Array.prototype.forEach.call(document.getElementsByClassName('order_now'), function(order_now) {
+        var st1 = order_now.parentElement.getElementsByClassName('st1')[0];
+        if(st1.value == st1.attributes['max'].value) order_now.checked = true;
+      });
       setTimeout(reload_data, 2000);
     });
     window.onbeforeunload = function(){
       Array.prototype.forEach.call(document.getElementsByClassName('flag'), function(flag) {
         flag.setAttribute('disabled', true);
       });
+      localStorage.setItem('tbl_content_scroll_top', tbl_content.scrollTop);
     }
     </script>
     <style type="text/css">
@@ -154,10 +292,10 @@
     }
     .tbl-header {
       background-color: rgba(255,152,0,1);
-      height: 54px;
+      height: 49px;
     }
     .tbl-content {
-        height: calc(100% - 54px);
+        height: calc(100% - 49px);
         overflow-x: auto;
         margin-top: 0px;
         border: 0;
@@ -173,6 +311,10 @@
         font-size: 12px;
         color: #000;
         text-transform: uppercase;
+        vertical-align: middle;
+    }
+    th {
+      padding: 15px;
     }
     td {
         padding: 0 15px;
@@ -205,7 +347,7 @@
         background-color: #000;
         color: #fff;
         padding: 15px;
-        height: 54px;
+        height: 49px;
     }
     .delimier {
       border-left: 1px dotted #555;
@@ -219,9 +361,67 @@
       cursor: pointer;
     }
     body > section {
-      height: calc(100% - 54px);
+      height: calc(100% - 49px);
+    }
+    #indicator {
+      width: 24px;
+      height: 24px;
+      border-radius: 3px;
+      float: right;
+    }
+    input.flag {
+      cursor: pointer;
+    }
+    input[type=number] {
+      width: 40px;
+    }
+    span.gray {
+      color: gray;
+    }
+    input.st1 {
+      border-color: transparent;
+      background-color: transparent;
+    }
+    body.firefox input.st1 {
+      padding: 5px;
+      -moz-appearance:textfield;
+    }
+    body.chrome input.st1:hover {
+      border: 1px solid #a9a9a9;
+      margin: 1px;
+      background-color: #fff;
+    }
+    body.firefox input.st1:hover {
+      border-collapse: collapse;
+      border-spacing: 0px 0px;
+      border-color: rgb(242, 241, 240);
+      border-style: inset;
+      border-width: 1px;
+      padding: 6px;
+      -moz-appearance: number-input;
+    }
+    input.input_neobe_checkbox {
+      margin: 0;
+      height: 19px;
+      float: left;
+      margin-top: 2px;
+    }
+    body.firefox .input_neobe_checkbox {
+      margin: 7px 0px -1px;
+    }
+    .medium_text {
+      width: 110px;
+    }
+    .short_text {
+      width: 30px;
     }
     </style>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" href="/favicon-32x32.png" sizes="32x32">
+    <link rel="icon" type="image/png" href="/favicon-16x16.png" sizes="16x16">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+    <meta name="theme-color" content="#ffffff">
   </head>
   <body>
     <form action="/" id="settings">
@@ -229,9 +429,12 @@
       <span class="delimier"></span>
       <label>до: <input type="date" name="to" value="<% @date_to %>"></label>
       <span class="delimier"></span>
-      <input type="submit" value="ок">
+      <input type="submit" value="ок" title="показать товар для выбранных дат">
       <span class="delimier"></span>
-      <input type="button" id="print_table" value="Печать">
+      <input type="button" id="print_table" value="🖶" title="печать">
+      <span class="delimier"></span>
+      <input type="button" id="email_to_provider" value="✉" title="письмо поставщику">
+      <div id="indicator" title="передача данных"></div>
     </form>
     <section>
       <div class="tbl-header" style="padding-right: 6px;">
@@ -244,9 +447,11 @@
               <th>количество</th>
               <th>сайты</th>
               <th>заказы</th>
-              <th>даты отгрузки</th>
+              <th>даты</th>
               <th class="long_text">коментарий</th>
-              <th>статус флаги</th>
+              <th class="medium_text order_now_container">ЗАКАЗАТЬ</th>
+              <th>ЗАКАЗАННО</th>
+              <th>ОБЕСПЕЧЕНО</th>
             </tr>
           </thead>
         </table>
@@ -259,4 +464,8 @@
       </div>
     </section>
   </body>
-</html>
+</html><%
+just_updated = REDIS.get('just_updated_'+sessionid)
+REDIS.del('just_updated_'+sessionid) if just_updated
+nil
+%>

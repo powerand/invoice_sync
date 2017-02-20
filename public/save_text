@@ -12,7 +12,10 @@ text = nil
     end
   end
 end
-stores.each do |store|
-  REDIS.set(store.join(HTML_DELIMIER), text)
+stores.each_with_index do |store, index|
+  store.unshift '0'
+  texts = text.to_s.split('; ')
+  REDIS.set(store.join(HTML_DELIMIER), texts.size > 1 ? texts[index] : text)
 end
+REDIS.set('just_updated_'+sessionid, true)
 %>

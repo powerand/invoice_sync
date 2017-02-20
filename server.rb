@@ -13,6 +13,7 @@ HDD_STORE = File.join(ROOT, 'hdd-store')
 HDD_STORE_WEB_ROOT = File.join(HDD_STORE, 'public')
 REDIS = Redis.new(path: '/tmp/redis.sock')
 THREADS = []
+HTML_DELIMIER = ';%20'
 
 def ramdisk_mounted
   !`mount|grep public`.empty?
@@ -96,88 +97,102 @@ end
 
 loop do
   socket = SERVER.accept
-  # Thread.start(SERVER.accept) do |socket|
-    begin
-      # Timeout.timeout(7) do
-        request_headers, request_body = socket.recvmsg[0].split(HBD)
-        puts "empty message" && next unless request_headers
-        request_headers = request_headers.split(EOL)
-        request_method, request_path, request_protocol = request_headers.shift.split(' ')
-        request_body = socket.recvmsg[0] if request_method == 'POST' && !request_body
-        request_body = request_body && uri_decode(request_body).split('&').reduce({}) do |acc, el|
-          k, v = el.split('=')
-          acc[k] = if k[-2..-1] == '[]'
-            arr = acc[k] || []
-            arr.push(v) if v
-            arr
-          else
-            v
-          end
-          acc
-        end
-        puts "#{Time.now}, #{request_method}, #{request_path}"
-        request_headers = request_headers.reduce({}) do |accumulator, string|
-          key, val = string.split(': ')
-          accumulator[key] = val
-          accumulator
-        end
-        request_path, query_string = request_path.split('?')
-        @params = unserialize_query(query_string).select { |key, val| val }
-        @cookie = request_headers['Cookie'] || "sessionid=#{rand(1000000)}"
-        request_path = File.join(WEB_ROOT, request_path)
-        request_path = File.join(request_path, DIR_INDEX) if File.directory?(request_path)
-        file_content_type = content_type(request_path)
-        if File.exist?(request_path)
-          file = open(request_path)
-          body = file.read
-          if request_path[/\.out\.html$/]
-            javascript = "<script type=\"text/javascript\">window.onload = function(){window.scroll(0, document.body.scrollHeight);}</script>"
-            body = "<link href=\"/partials/frame_stylesheet.css\" type=\"text/css\" rel=\"stylesheet\" />\n#{javascript}\n#{body}"
-          end
+  begin
+    Timeout.timeout(700) do
+      content_length = nil
+      request_headers, request_body = '', ''
+      while (line = socket.gets) do
+        if content_length
+          byebug
         else
-          socket.puts "HTTP/1.1 404 Not Found"
-          socket.puts "Content-Type: text/plain; Charset=#{DEFAULT_CHARSET}"
-          body = "File not found"
-        end
-        if file_content_type[/^text\//]
-          body = body.gsub(/\<\%.+?\%\>/m) do |interpolation|
-            begin
-              eval(interpolation[/\<\%(.+?)\%\>/m, 1], binding)
-            rescue => err
-              byebug
-            end
+          if line[/^Content\-Length: (\d+)/]
+            content_length = $1
           end
-          sessionid = @cookie[/sessionid\=(.+?)(?:\;|$)/, 1]
+          break if line == EOL
+        end
+        request_headers << line
+      end
+      puts "empty message" && next if request_headers.empty?
+      request_body = nil if request_body.empty?
+      request_headers = request_headers.split(EOL)
+      request_method, request_path, request_protocol = request_headers.shift.split(' ')
+      # request_body = socket.recvmsg[0] if request_method == 'POST' && !request_body
+      request_body = request_body && uri_decode(request_body).split('&').reduce({}) do |acc, el|
+        k, v = el.split('=')
+        acc[k] = if k[-2..-1] == '[]'
+          arr = acc[k] || []
+          arr.push(v) if v
+          arr
+        else
+          v
+        end
+        acc
+      end
+      puts "#{Time.now}, #{request_method}, #{request_path}"
+      request_headers = request_headers.reduce({}) do |accumulator, string|
+        key, val = string.split(': ')
+        accumulator[key] = val
+        accumulator
+      end
+      request_path, query_string = request_path.split('?')
+      is_index = request_path == '/'
+      @params = unserialize_query(query_string).select { |key, val| val }
+      @cookie = request_headers['Cookie'] || "sessionid=#{rand(1000000)}"
+      sessionid = @cookie[/sessionid\=(.+?)(?:\;|$)/, 1]
+      just_updated = false
+      request_path = File.join(WEB_ROOT, request_path)
+      request_path = File.join(request_path, DIR_INDEX) if File.directory?(request_path)
+      file_content_type = content_type(request_path)
+      if File.exist?(request_path)
+        file = open(request_path)
+        body = file.read
+        if request_path[/\.out\.html$/]
+          javascript = "<script type=\"text/javascript\">window.onload = function(){window.scroll(0, document.body.scrollHeight);}</script>"
+          body = "<link href=\"/partials/frame_stylesheet.css\" type=\"text/css\" rel=\"stylesheet\" />\n#{javascript}\n#{body}"
+        end
+      else
+        socket.puts "HTTP/1.1 404 Not Found"
+        socket.puts "Content-Type: text/plain; Charset=#{DEFAULT_CHARSET}"
+        body = "File not found"
+      end
+      if file_content_type[/^text\//]
+        body = body.gsub(/\<\%.+?\%\>/m) do |interpolation|
+          eval(interpolation[/\<\%(.+?)\%\>/m, 1], binding)
+        end
+        if is_index
           last_result_checksum_key = "last_result_checksum-#{sessionid}-#{query_string}"
           last_result_checksum = REDIS.get(last_result_checksum_key).to_i
           curr_result_checksum = Crc32.calculate(body, body.size, 0)
           @not_modified = curr_result_checksum == last_result_checksum
-          REDIS.set(last_result_checksum_key, curr_result_checksum) unless @not_modified
+          REDIS.set(last_result_checksum_key, curr_result_checksum) if just_updated || !@not_modified
         end
-        if @not_modified && request_headers['X-RMXHR']
-          socket.puts 'HTTP/1.1 204 No Content'
-        else
-          socket.puts "HTTP/1.1 200 OK"
-        end
-        socket.puts 'Date: Thu, 14 Feb 2017 17:07:35 GMT'
-        socket.puts 'Server: Yudin'
-        socket.puts 'Connection: keep-alive'
-        unless @not_modified && request_headers['X-RMXHR']
-          socket.puts "Content-Type: #{file_content_type}; Charset=#{DEFAULT_CHARSET}"
-          socket.puts "Content-Length: #{body.bytesize}"
-          socket.puts "Set-Cookie: #{@cookie}"
-          socket.puts
-          socket.print body
-        end
-      # end
-    rescue Errno::EPIPE => err
-      puts err
-      retry
-    rescue Timeout::Error => err
-      puts err
-      retry
-    ensure
-      socket.close
+      end
+      if just_updated || (@not_modified && request_headers['X-RMXHR'])
+        socket.puts 'HTTP/1.1 204 No Content'
+      else
+        socket.puts "HTTP/1.1 200 OK"
+      end
+      socket.puts 'Date: Thu, 14 Feb 2017 17:07:35 GMT'
+      socket.puts 'Server: Yudin'
+      socket.puts 'Connection: keep-alive'
+      unless just_updated || (@not_modified && request_headers['X-RMXHR'])
+        socket.puts "Content-Type: #{file_content_type}; Charset=#{DEFAULT_CHARSET}"
+        socket.puts "Content-Length: #{body.bytesize}"
+        socket.puts "Set-Cookie: #{@cookie}"
+        socket.puts
+        socket.print body
+      end
     end
-  # end
+  rescue Errno::EPIPE => err
+    puts err
+    retry
+  rescue Timeout::Error => err
+    puts err
+    retry
+  rescue Errno::ECONNRESET => err
+    puts err
+    retry
+  ensure
+    socket.close
+  end
 end

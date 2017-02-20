@@ -1,0 +1,26 @@
+<%
+stores = []
+value = nil
+ordered = false
+@params.each do |key, val|
+  if key == 'n'
+    ordered = true if val == '2'
+    stores.each do |store|
+      store << val
+    end
+  elsif key == 'value'
+    value = val
+  else
+    val.split(HTML_DELIMIER).each_with_index do |key_part, index|
+      stores[index] ||= []
+      stores[index] << key_part
+    end
+  end
+end
+stores.each_with_index do |store, index|
+  values = value.to_s.split(';%20')
+  add = ordered ? REDIS.get(store.join(HTML_DELIMIER)).to_i : 0
+  REDIS.set(store.join(HTML_DELIMIER), values.size > 1 ? values[index].to_i + add : value.to_i + add)
+end
+REDIS.set('just_updated_'+sessionid, true)
+%>

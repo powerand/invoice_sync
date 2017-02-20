@@ -37,7 +37,6 @@ PROP_NAMES = [
 DEFAULT_PROP_NAMES = ['Артикул', 'Бренд']
 MYSQL_CLIENTS = []
 DELIMIER = '->|<-'
-HTML_DELIMIER = ';%20'
 FLAG_UKEYS = ['PRODUCT_ID', 'SITE', 'ORDER_ID']
 
 def main_sql_request
@@ -111,24 +110,28 @@ def run
       hash[key]['ARTICULE'] ||= element['ARTICULE']
       hash[key]['BRAND'] ||= element['BRAND']
       hash[key]['NAME'] ||= element['NAME']
-      hash[key]['QUANTITY'] ||= 0
+      hash[key]['QUANTITYS'] ||= []
+      hash[key]['QUANTITYS'] << element['QUANTITY'].to_i
       hash[key]['SITES'] ||= []
       hash[key]['SITES'] << element['SITE']
       hash[key]['ORDERS'] ||= []
       hash[key]['ORDERS'] << element['ORDER_ID']
-      hash[key]['CHECKEDS'] = 3.times.map do |i|
-        {'true' => true, 'false' => false}[REDIS.get((FLAG_UKEYS.map { |ukey| element[ukey].to_s } + [i.to_s]).join(HTML_DELIMIER))]
-      end
       hash[key]['PRODUCTS'] ||= []
       hash[key]['PRODUCTS'] << element['PRODUCT_ID']
       hash[key]['DELIVERY_DOC_DATES'] ||= []
       hash[key]['DELIVERY_DOC_DATES'] << element['DELIVERY_DOC_DATE'].strftime("%F")
-      hash[key]['QUANTITY'] += element['QUANTITY'].to_i
-      hash[key]['COMMENT'] ||= REDIS.get(FLAG_UKEYS.map { |ukey| element[ukey].to_s }.join(HTML_DELIMIER))
+      hash[key]['COMMENTS'] ||= []
+      new_comment = REDIS.get((['0'] + FLAG_UKEYS.map { |ukey| element[ukey].to_s }).join(HTML_DELIMIER))
+      hash[key]['COMMENTS'] << new_comment unless hash[key]['COMMENTS'].include?(new_comment)
+      3.times.each do |i|
+        i += 1
+        hash[key]["ST#{i}"] ||= 0
+        hash[key]["ST#{i}"] += REDIS.get((FLAG_UKEYS.map { |ukey| element[ukey].to_s } + [i.to_s]).join(HTML_DELIMIER)).to_i
+      end
     end
     hash
   end.sort_by do |_, value|
-    value['BRAND']
+    Unicode.downcase(value['BRAND'])
   end.to_h.to_json
   puts "master процесс потратил #{Time.now - start_time}"
 end
