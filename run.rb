@@ -40,11 +40,7 @@ DELIMIER = '->|<-'
 FLAG_UKEYS = ['PRODUCT_ID', 'SITE', 'ORDER_ID']
 
 def main_sql_request
-  begin
-    iblock_ids = MYSQL_CLIENTS[@market_index].query("SELECT ID FROM b_iblock WHERE IBLOCK_TYPE_ID LIKE '%catalog%' AND ACTIVE = 'Y'").to_a.map{|e| e['ID']}
-  rescue
-    byebug
-  end
+  iblock_ids = MYSQL_CLIENTS[@market_index].query("SELECT ID FROM b_iblock WHERE IBLOCK_TYPE_ID LIKE '%catalog%' AND ACTIVE = 'Y'").to_a.map{|e| e['ID']}
   select_props = []
   ['articule', 'brand'].each_with_index do |subject, idx|
     market_prop_names = PROP_NAMES[@market_index] || DEFAULT_PROP_NAMES
