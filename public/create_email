@@ -1,0 +1,54 @@
+<%
+require 'net/pop'
+require 'net/smtp'
+require 'uri'
+require 'byebug'
+MAILBOX = 'info@vselampi.ru'
+ARTICULES = @params ? URI.decode(@params['articules']).split('; ') : []
+BRANDS = @params ? URI.decode(@params['brands']).split('; ') : []
+QUANTITYS = @params ? URI.decode(@params['quantitys']).split('; ') : []
+TDSI = " style='border:none;padding:5px'"
+HTML_TABLE_ROWS = ARTICULES.each_with_index.map do |articule, index|
+  "<tr><td#{TDSI}>#{articule}</td><td#{TDSI}>#{BRANDS[index]}</td><td#{TDSI}>#{QUANTITYS[index]}</td></tr>"
+end.join
+MESSAGE = <<MESSAGE
+From: ООО Гудс <#{MAILBOX}>
+To: OOO Гудс <#{MAILBOX}>
+MIME-Version: 1.0
+Content-type: text/html
+Subject: Заказ
+Sender: invoice_sync
+
+<h1>Список позиций:</h1>
+<table style="border:none;font-weight:bold">
+  <thead>
+    <tr><td#{TDSI}>Артикул</td><td#{TDSI}>Бренд</td><td#{TDSI}>Количество</td></tr>
+  </thead>
+  <tbody>
+#{HTML_TABLE_ROWS}
+  </tbody>
+</table>
+MESSAGE
+Net::POP.enable_ssl(OpenSSL::SSL::VERIFY_NONE)
+def start_pop
+  @pop = Net::POP3.new('pop.yandex.ru')
+  @pop.start 'info@vselampi.ru', 'david391064'
+end
+delta = []
+until delta.size == 1
+  start_pop
+  smtp = Net::SMTP.new('smtp.yandex.ru', 465)
+  smtp.enable_ssl
+  smtp.enable_tls
+  smtp.start('vselampi.ru', MAILBOX, 'david391064', :login)
+  UIDLS = @pop.mails.map(&:uidl)
+  smtp.send_message(MESSAGE, MAILBOX, MAILBOX)
+  until delta.size > 0
+    puts delta.size
+    start_pop
+    delta = @pop.mails.map(&:uidl) - UIDLS
+  end
+end
+smtp.quit
+"https://mail.yandex.ru/?dpda=yes&uid=1130000002755703&login=info#compose/#{delta.first}?oper=forward"
+%>
