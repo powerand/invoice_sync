@@ -19,7 +19,7 @@ ordered = false
 end
 stores.each_with_index do |store, index|
   values = value.to_s.split(';%20')
-  add = ordered ? REDIS.get(store.join(HTML_DELIMIER)).to_i : 0
+  add = value && ordered ? REDIS.get(store.join(HTML_DELIMIER)).to_i : 0
   REDIS.set(store.join(HTML_DELIMIER), values.size > 1 ? values[index].to_i + add : value.to_i + add)
 end
 REDIS.set('just_updated_'+sessionid, true)

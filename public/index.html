@@ -18,9 +18,9 @@
           document.open();
           document.write(xhr.responseText);
           document.close();
-          indicator.style.backgroundColor = 'yellow';
+          indicator.classList.add('read');
           setTimeout(function(){
-            indicator.style.backgroundColor = '';
+            indicator.classList.remove('read');
           }, 100);
           return true;
         } else if(xhr.status == 204) {
@@ -46,7 +46,7 @@
           head_table = document.getElementById('head_table'),
           indicator = document.getElementById('indicator'),
           check_all = document.getElementById('check_all'),
-          email_window;
+          cancel_ordered_html = '<span id="cancel_ordered">✘</span>';
       tbl_content = document.getElementsByClassName('tbl-content')[0];
       for(var item in result) {
         var tr = document.createElement('tr'),
@@ -62,7 +62,7 @@
           }
           if(key == 'ST1') {
             td.classList.add('medium_text', 'order_now_container');
-            ival = '<input class="st1" type="number" value="' + ival + '" max=' + svalues['QUANTITYS'].reduce(function(a, b){ return a + b; }, 0) + ' min=0>';
+            ival = '<input class="st1" type="number" value="' + ival + '" max=' + (svalues['QUANTITYS'].reduce(function(a, b){ return a + b; }, 0) - svalues['ST2']) + ' min=0>';
             ival += '<input class="input_neobe_checkbox order_now" type="checkbox">';
           }
           if(key == 'ST2') {
@@ -92,6 +92,7 @@
           if(key == 'COMMENTS') td.classList.add('comment');
           tr.appendChild(td);
         }
+        if(tr.getElementsByClassName('quantitys')[0].textContent != tr.getElementsByClassName('ordered')[0].textContent) tr.classList.add('incomplete');
         main_table.children[0].appendChild(tr);
       }
       Array.prototype.forEach.call(document.getElementsByClassName('st1'), function(st1) {
@@ -120,18 +121,26 @@
           }).join('; ');
           xhr.open('GET', '/save_st?products='+products+'&sites='+sites+'&orders='+orders+'&n='+n+'&value='+value, true);
           xhr.send();
-          indicator.style.backgroundColor = 'red';
+          indicator.classList.add('write');
           xhr.onreadystatechange = function() {
             if (xhr.readyState != 4) return;
             if (xhr.status == 200) {
               thas.defaultValue = thas.value;
+              order_now_element.checked = thas.value == thas.attributes['max'].value;
             } else {
               console.error(xhr.status + ': ' + xhr.statusText);
               thas.value = old_value;
             }
-            indicator.style.backgroundColor = '';
+            indicator.classList.remove('write');
           }
-          order_now_element.checked = this.value == this.attributes['max'].value;
+        }
+      });
+      Array.prototype.forEach.call(document.getElementsByClassName('ordered'), function(ordered) {
+        ordered.onmouseenter = function() {
+          if(this.innerHTML != '0') this.innerHTML += cancel_ordered_html;
+        }
+        ordered.onmouseleave = function() {
+          this.innerHTML = this.innerHTML.replace(cancel_ordered_html, '');
         }
       });
       Array.prototype.forEach.call(document.getElementsByClassName('order_now'), function(order_now) {
@@ -160,13 +169,13 @@
           var xhr = new XMLHttpRequest();
           xhr.open('GET', '/save_text?products='+products+'&sites='+sites+'&orders='+orders+'&text='+thas.textContent, true);
           xhr.send();
-          indicator.style.backgroundColor = 'red';
+          indicator.classList.add('write');
           xhr.onreadystatechange = function() {
             if (xhr.readyState != 4) return;
             if (xhr.status != 200) {
               console.error(xhr.status + ': ' + xhr.statusText);
             }
-            indicator.style.backgroundColor = '';
+            indicator.classList.remove('write');
           }
         }
       });
@@ -192,12 +201,15 @@
         newWin.close();
       }
       document.getElementById('email_to_provider').onclick = function() {
-        if(typeof(email_window) != 'undefined') email_window.close();
-        email_window = window.open('email', '_blank');
-        var articules = [], brands = [];
+        var articules = [],
+            brands = [],
+            quantitys_to_order = [],
+            need_email = false;
         Array.prototype.forEach.call(document.getElementsByClassName('st1'), function(st1) {
           var value = st1.value;
           if(value > 0) {
+            need_email = true;
+            quantitys_to_order.push(value);
             var tr = st1.parentElement.parentElement,
                 products = tr.getAttribute('products'),
                 sites = tr.getElementsByClassName('sites')[0].textContent,
@@ -205,25 +217,29 @@
                 quantitys = tr.getElementsByClassName('quantitys')[0].textContent,
                 articule = tr.getElementsByClassName('articule')[0].textContent,
                 brand = tr.getElementsByClassName('brand')[0].textContent,
-                ordered_element = tr.getElementsByClassName('ordered')[0];
+                ordered_element = tr.getElementsByClassName('ordered')[0],
+                quantitys_split = quantitys.split('=');
             articules.push(articule);
             brands.push(brand);
-            value = quantitys.split('=')[0].split('+').map(function(quantity){
+            value_joined = quantitys_split[0].split('+').map(function(quantity){
               quantity = parseInt(quantity);
-              value -= quantity;
-              if(value >= 0) {
+              value_modified = value;
+              value_modified -= quantity;
+              if(value_modified >= 0) {
                 return quantity;
               } else {
-                return Math.max(0, quantity + value);
+                return Math.max(0, quantity + value_modified);
               }
             }).join('; ');
             var xhr = new XMLHttpRequest();
-            xhr.open('GET', '/save_st?products='+products+'&sites='+sites+'&orders='+orders+'&n=2'+'&value='+value, true);
+            xhr.open('GET', '/save_st?products='+products+'&sites='+sites+'&orders='+orders+'&n=2'+'&value='+value_joined, true);
             xhr.send();
             xhr.onreadystatechange = function() {
               if (xhr.readyState != 4) return;
               if (xhr.status == 200) {
                 ordered_element.textContent = parseInt(ordered_element.textContent) + parseInt(st1.value);
+                if(st1.max==value) tr.classList.remove('incomplete');
+                st1.max = st1.max - st1.value;
                 st1.value = 0;
                 fire_event(st1, 'change');
               } else {
@@ -231,14 +247,17 @@
             }
           }
         });
-        var xhr2 = new XMLHttpRequest();
-        xhr2.open('GET', '/create_email?articules='+articules.join(';%20')+'&brands='+brands.join(';%20'), true);
-        xhr2.send();
-        xhr2.onreadystatechange = function() {
-          if (xhr2.readyState != 4) return;
-          if (xhr2.status == 200) {
-            email_window.location.href = xhr2.responseText;
-          } else {
+        if(need_email) {
+          var xhr2 = new XMLHttpRequest(),
+              email_window = window.open('email', '_blank');
+          xhr2.open('GET', '/create_email?articules='+articules.join(';%20')+'&brands='+brands.join(';%20')+'&quantitys='+quantitys_to_order.join(';%20'), true);
+          xhr2.send();
+          xhr2.onreadystatechange = function() {
+            if (xhr2.readyState != 4) return;
+            if (xhr2.status == 200) {
+              email_window.location.href = xhr2.responseText;
+            } else {
+            }
           }
         }
       }
@@ -262,6 +281,36 @@
       });
       setTimeout(reload_data, 2000);
     });
+    document.onclick = function(event) {
+      if(event.target.id == 'cancel_ordered') {
+        var thas = event.target,
+            tr = thas.parentElement.parentElement,
+            products = tr.getAttribute('products'),
+            sites = tr.getElementsByClassName('sites')[0].textContent,
+            orders = tr.getElementsByClassName('orders')[0].textContent,
+            n = 2,
+            st1 = tr.getElementsByClassName('st1')[0],
+            quantitys = tr.getElementsByClassName('quantitys')[0].textContent,
+            quantitys_split = quantitys.split('='),
+            order_now_element = tr.getElementsByClassName('order_now')[0];
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', '/save_st?products='+products+'&sites='+sites+'&orders='+orders+'&n='+n, true);
+        xhr.send();
+        indicator.classList.add('write');
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState != 4) return;
+          if (xhr.status == 200) {
+            thas.parentElement.innerHTML = '0';
+            tr.classList.add('incomplete');
+            st1.max = quantitys_split[quantitys_split.length-1];
+            order_now_element.checked = false;
+          } else {
+            console.error(xhr.status + ': ' + xhr.statusText);
+          }
+          indicator.classList.remove('write');
+        }
+      }
+    }
     window.onbeforeunload = function(){
       Array.prototype.forEach.call(document.getElementsByClassName('flag'), function(flag) {
         flag.setAttribute('disabled', true);
@@ -328,6 +377,9 @@
     tbody > tr:hover {
       background-color: rgba(255,152,0,0.5);
     }
+    #main_table tr.incomplete:hover {
+      background-color: rgba(255,152,0,0.8);
+    }
     ::-webkit-scrollbar {
         width: 6px;
     }
@@ -368,6 +420,12 @@
       height: 24px;
       border-radius: 3px;
       float: right;
+    }
+    #indicator.write {
+      background-color: red;
+    }
+    #indicator.read {
+      background-color: yellow;
     }
     input.flag {
       cursor: pointer;
@@ -414,6 +472,15 @@
     }
     .short_text {
       width: 30px;
+    }
+    #cancel_ordered {
+      cursor: pointer;
+    }
+    #cancel_ordered:hover {
+      color: red;
+    }
+    #main_table tr.incomplete {
+      background-color: #fcc;
     }
     </style>
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
