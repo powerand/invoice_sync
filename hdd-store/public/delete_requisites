@@ -1,0 +1,28 @@
+<style type="text/css">
+  body {
+    font-family: 'Roboto', sans-serif;
+    font-size: 12px;
+    margin: 0;
+  }
+  h3 {
+    margin: 1em;
+    text-align: center;
+  }
+  .notice {
+    color: green;
+  }
+  .error {
+    color: red;
+  }
+</style>
+<%
+if $params['id']
+  $params['id'].map do |id|
+    REDIS.smembers('requisites')[id.to_i]
+  end.each do |val|
+    REDIS.srem('requisites', val)
+  end ? %{<h3>Фирмы успешно удалены</h3>} : %{<h3>Не смог удалить</h3>}
+else
+  %{<h3 class="error">Кажется не выбрано ни одной фирмы</h3>}
+end
+%>

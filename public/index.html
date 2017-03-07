@@ -3,51 +3,11 @@
   <head>
     <meta charset="utf-8">
     <title>отгрузки</title>
+    <script type="text/javascript" src="/index+incoming+requisites.js"></script>
     <script type="text/javascript">
-    var tbl_content;
-    function reload_data(){
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', document.location.href, true);
-      xhr.setRequestHeader('X-RMXHR', '1');
-      xhr.overrideMimeType('text/plain');
-      xhr.send();
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState != 4) return;
-        if (xhr.status == 200) {
-          localStorage.setItem('tbl_content_scroll_top', tbl_content.scrollTop);
-          document.open();
-          document.write(xhr.responseText);
-          document.close();
-          indicator.classList.add('read');
-          setTimeout(function(){
-            indicator.classList.remove('read');
-          }, 100);
-          return true;
-        } else if(xhr.status == 204) {
-        } else {
-          console.error(xhr.status + ': ' + xhr.statusText);
-        }
-        setTimeout(reload_data, 2000);
-      }
-    }
-    function fire_event(element, event_name) {
-      if ("createEvent" in document) {
-        var evt = document.createEvent("HTMLEvents");
-        evt.initEvent(event_name, false, true);
-        element.dispatchEvent(evt);
-      }
-      else {
-        element.fireEvent('on'+event_name);
-      }
-    }
     document.addEventListener("DOMContentLoaded", function(){
-      var result = <% require('run.rb'); run; @result %>,
-          main_table = document.getElementById('main_table'),
-          head_table = document.getElementById('head_table'),
-          indicator = document.getElementById('indicator'),
-          check_all = document.getElementById('check_all'),
+      var result = <% require('index.rb'); @outgoing = Outgoing.new; @outgoing.run; @outgoing.result %>,
           cancel_ordered_html = '<span id="cancel_ordered">✘</span>';
-      tbl_content = document.getElementsByClassName('tbl-content')[0];
       for(var item in result) {
         var tr = document.createElement('tr'),
             svalues = result[item];
@@ -60,6 +20,10 @@
           if(key == 'PRODUCTS') {
             continue;
           }
+          if(key == 'COMMENTS') {
+            td.classList.add('medium_text');
+            if(ival.join('; ').length > 10) td.setAttribute('title', ival.join('; '));
+          }
           if(key == 'ST1') {
             td.classList.add('medium_text', 'order_now_container');
             ival = '<input class="st1" type="number" value="' + ival + '" max=' + (svalues['QUANTITYS'].reduce(function(a, b){ return a + b; }, 0) - svalues['ST2']) + ' min=0>';
@@ -68,16 +32,25 @@
           if(key == 'ST2') {
             td.classList.add('ordered');
           }
-          if(key == 'NAME' || key == 'COMMENTS') {
+          if(key == 'NAME') {
             td.classList.add('long_text');
-            td.setAttribute('title', ival);
+            if(ival && ival.length > 45) td.setAttribute('title', ival);
           }
           if(Array.isArray(ival)) {
             if(key == 'QUANTITYS') {
               var is_multival = ival.length > 1,
                   pref = is_multival ? '<span class="gray">' : '',
                   suff = is_multival ? '</span>' : '';
-              td.innerHTML = pref + ival.join('+') + (is_multival ? '=' : '') + suff + (is_multival ? ival.reduce(function(a, b){ return a + b; }, 0) : '');
+              td.innerHTML = (is_multival ? ival.reduce(function(a, b){ return a + b; }, 0) : '') + pref + (is_multival ? ' = ' : '') + ival.join(' + ') + suff;
+            } else if(key == 'PRICES') {
+              var is_multival = ival.length > 1,
+                  pref = '<span class="gray">',
+                  suff = '</span>';
+              td.innerHTML = ival.reduce(function(a,b,i){
+                return a + b * svalues['QUANTITYS'][i];
+              }, 0) + pref + ' = ' + ival.map(function(thas,i) {
+                return thas+'×'+svalues['QUANTITYS'][i];
+              }).join(' + ') + suff;
             } else {
               td.innerHTML = ival.join('; ');
             }
@@ -92,7 +65,11 @@
           if(key == 'COMMENTS') td.classList.add('comment');
           tr.appendChild(td);
         }
-        if(tr.getElementsByClassName('quantitys')[0].textContent != tr.getElementsByClassName('ordered')[0].textContent) tr.classList.add('incomplete');
+        if(tr.getElementsByClassName('quantitys')[0].textContent.split(' = ')[0] == tr.getElementsByClassName('ordered')[0].textContent) {
+          tr.getElementsByClassName('order_now_container')[0].classList.add('hidden_inside');
+        } else {
+          tr.classList.add('incomplete');
+        }
         main_table.children[0].appendChild(tr);
       }
       Array.prototype.forEach.call(document.getElementsByClassName('st1'), function(st1) {
@@ -106,11 +83,12 @@
               order_now_element = tr.getElementsByClassName('order_now')[0],
               thus = thas,
               n = 0,
-              old_value = thas.defaultValue;
+              old_value = thas.defaultValue,
+              quantitys_split = quantitys.split(' = ');
           while(thus = thus.nextElementSibling){ n += 1; }
           var xhr = new XMLHttpRequest(),
               value = thas.value;
-          value = quantitys.split('=')[0].split('+').map(function(quantity){
+          value = quantitys_split[quantitys_split.length-1].split(' + ').map(function(quantity){
             quantity = parseInt(quantity);
             value -= quantity;
             if(value >= 0) {
@@ -153,7 +131,7 @@
             st1.dispatchEvent(evt);
           }
           else {
-            st1.fireEvent("onchange");
+            st1.fire_event("onchange");
           }
         }
       });
@@ -175,11 +153,11 @@
             if (xhr.status != 200) {
               console.error(xhr.status + ': ' + xhr.statusText);
             }
+            if(thas.textContent.length > 10) thas.title = thas.textContent;
             indicator.classList.remove('write');
           }
         }
       });
-      tbl_content.scrollTop = localStorage.getItem('tbl_content_scroll_top');
       document.getElementById('print_table').onclick = function() {
         newWin = window.open("");
         var print_main_table = newWin.document.body.appendChild(document.createElement('table')),
@@ -195,7 +173,7 @@
         stylesheet.innerHTML = 'td.long_text { max-width:200px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis }';
         stylesheet.innerHTML += 'input[type=number] { width: 40px }';
         stylesheet.innerHTML += '.order_now_container { display: none }';
-        stylesheet.innerHTML += 'table { border: 1px solid #ccc } thead > tr > td { background-color: #ccc }';
+        stylesheet.innerHTML += 'table { border: 1px solid #ccc } table td { background-color: #ddd }';
         newWin.document.head.appendChild(stylesheet);
         newWin.print();
         newWin.close();
@@ -218,10 +196,10 @@
                 articule = tr.getElementsByClassName('articule')[0].textContent,
                 brand = tr.getElementsByClassName('brand')[0].textContent,
                 ordered_element = tr.getElementsByClassName('ordered')[0],
-                quantitys_split = quantitys.split('=');
+                quantitys_split = quantitys.split(' = ');
             articules.push(articule);
             brands.push(brand);
-            value_joined = quantitys_split[0].split('+').map(function(quantity){
+            value_joined = quantitys_split[quantitys_split.length-1].split(' + ').map(function(quantity){
               quantity = parseInt(quantity);
               value_modified = value;
               value_modified -= quantity;
@@ -238,7 +216,10 @@
               if (xhr.readyState != 4) return;
               if (xhr.status == 200) {
                 ordered_element.textContent = parseInt(ordered_element.textContent) + parseInt(st1.value);
-                if(st1.max==value) tr.classList.remove('incomplete');
+                if(st1.max==value) {
+                  tr.classList.remove('incomplete');
+                  tr.getElementsByClassName('order_now_container')[0].classList.add('hidden_inside');
+                }
                 st1.max = st1.max - st1.value;
                 st1.value = 0;
                 fire_event(st1, 'change');
@@ -279,6 +260,7 @@
         var st1 = order_now.parentElement.getElementsByClassName('st1')[0];
         if(st1.value == st1.attributes['max'].value) order_now.checked = true;
       });
+      tbl_content.scrollTop = localStorage.getItem(document.location.pathname + '_scroll_top');
       setTimeout(reload_data, 2000);
     });
     document.onclick = function(event) {
@@ -291,7 +273,7 @@
             n = 2,
             st1 = tr.getElementsByClassName('st1')[0],
             quantitys = tr.getElementsByClassName('quantitys')[0].textContent,
-            quantitys_split = quantitys.split('='),
+            quantitys_split = quantitys.split(' = '),
             order_now_element = tr.getElementsByClassName('order_now')[0];
         var xhr = new XMLHttpRequest();
         xhr.open('GET', '/save_st?products='+products+'&sites='+sites+'&orders='+orders+'&n='+n, true);
@@ -302,7 +284,8 @@
           if (xhr.status == 200) {
             thas.parentElement.innerHTML = '0';
             tr.classList.add('incomplete');
-            st1.max = quantitys_split[quantitys_split.length-1];
+            tr.getElementsByClassName('order_now_container')[0].classList.remove('hidden_inside');
+            st1.max = quantitys_split[0];
             order_now_element.checked = false;
           } else {
             console.error(xhr.status + ': ' + xhr.statusText);
@@ -311,121 +294,20 @@
         }
       }
     }
-    window.onbeforeunload = function(){
+    window.addEventListener('beforeunload', function(){
       Array.prototype.forEach.call(document.getElementsByClassName('flag'), function(flag) {
         flag.setAttribute('disabled', true);
       });
-      localStorage.setItem('tbl_content_scroll_top', tbl_content.scrollTop);
-    }
+    });
     </script>
+    <link rel="stylesheet" type="text/css" href="/index+incoming+requisites.css">
     <style type="text/css">
-    html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, pre, a, abbr, acronym, address, big, cite, code, del, dfn, em, img, ins, kbd, q, s, samp, small, strike, strong, sub, sup, tt, var, b, u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, caption, tbody, tfoot, thead, tr, th, td, article, aside, canvas, details, embed, figure, figcaption, footer, header, hgroup, menu, nav, output, ruby, section, summary, time, mark, audio, video {
-      margin: 0;
-      padding: 0;
-      border: 0;
-      font-size: 100%;
-      font: inherit;
-      vertical-align: baseline;
-      box-sizing: border-box;
-    }
-    table {
-        border-collapse: collapse;
-        border-spacing: 0;
-    }
-    body {
-        background: #fff;
-        font-family: 'Roboto', sans-serif;
-    }
-    html, body {
-      height: 100%;
-    }
-    .tbl-header {
-      background-color: rgba(255,152,0,1);
-      height: 49px;
-    }
-    .tbl-content {
-        height: calc(100% - 49px);
-        overflow-x: auto;
-        margin-top: 0px;
-        border: 0;
-    }
-    table {
-        width: 100%;
-        table-layout: fixed;
-    }
-    th {
-        padding: 20px 15px;
-        text-align: left;
-        font-weight: 500;
-        font-size: 12px;
-        color: #000;
-        text-transform: uppercase;
-        vertical-align: middle;
-    }
-    th {
-      padding: 15px;
-    }
-    td {
-        padding: 0 15px;
-        text-align: left;
-        vertical-align: middle;
-        font-weight: 300;
-        font-size: 12px;
-        color: #000;
-        border-bottom: solid 1px rgba(255,255,255,0.1);
-    }
-    tbody > tr:hover {
-      background-color: rgba(255,152,0,0.5);
-    }
-    #main_table tr.incomplete:hover {
-      background-color: rgba(255,152,0,0.8);
-    }
-    ::-webkit-scrollbar {
-        width: 6px;
-    }
-    ::-webkit-scrollbar-thumb {
-        -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
-    }
-    ::-webkit-scrollbar-track {
-        -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
-    }
-    .long_text {
-      width: 300px;
-      overflow:hidden; 
-      white-space:nowrap; 
-      text-overflow: ellipsis;
-    }
-    #settings {
-        background-color: #000;
-        color: #fff;
-        padding: 15px;
-        height: 49px;
-    }
-    .delimier {
-      border-left: 1px dotted #555;
-      margin: -20px 20px;
-    }
     input.flag {
       margin-left: 0px;
       margin-right: 6px;
     }
     .comment {
       cursor: pointer;
-    }
-    body > section {
-      height: calc(100% - 49px);
-    }
-    #indicator {
-      width: 24px;
-      height: 24px;
-      border-radius: 3px;
-      float: right;
-    }
-    #indicator.write {
-      background-color: red;
-    }
-    #indicator.read {
-      background-color: yellow;
     }
     input.flag {
       cursor: pointer;
@@ -467,12 +349,6 @@
     body.firefox .input_neobe_checkbox {
       margin: 7px 0px -1px;
     }
-    .medium_text {
-      width: 110px;
-    }
-    .short_text {
-      width: 30px;
-    }
     #cancel_ordered {
       cursor: pointer;
     }
@@ -481,6 +357,9 @@
     }
     #main_table tr.incomplete {
       background-color: #fcc;
+    }
+    .hidden_inside * {
+      visibility: hidden;
     }
     </style>
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
@@ -492,16 +371,22 @@
   </head>
   <body>
     <form action="/" id="settings">
-      <label>от: <input type="date" name="from" value="<% @date_from %>"></label>
-      <span class="delimier"></span>
-      <label>до: <input type="date" name="to" value="<% @date_to %>"></label>
+      <select id="date_subject" disabled>
+        <option value="deliver">отгрузка</option>
+      </select>
+      :
+      <label>от - <input type="date" name="from" value="<% @outgoing.date_from %>"></label>
+      <label>до - <input type="date" name="to" value="<% @outgoing.date_to %>"></label>
       <span class="delimier"></span>
       <input type="submit" value="ок" title="показать товар для выбранных дат">
       <span class="delimier"></span>
-      <input type="button" id="print_table" value="🖶" title="печать">
+      <input type="button" id="print_table" value="⎙" title="печать">
       <span class="delimier"></span>
       <input type="button" id="email_to_provider" value="✉" title="письмо поставщику">
       <div id="indicator" title="передача данных"></div>
+      <div page="/requisites.html" class="switch_to">реквизиты</div>
+      <div page="/incoming.html" class="switch_to">входящие</div>
+      <div page="/" class="switch_to current">исходящие</div>
     </form>
     <section>
       <div class="tbl-header" style="padding-right: 6px;">
@@ -515,10 +400,11 @@
               <th>сайты</th>
               <th>заказы</th>
               <th>даты</th>
-              <th class="long_text">коментарий</th>
-              <th class="medium_text order_now_container">ЗАКАЗАТЬ</th>
-              <th>ЗАКАЗАННО</th>
-              <th>ОБЕСПЕЧЕНО</th>
+              <th class="medium_text">коментарий</th>
+              <th>стоимость</th>
+              <th class="medium_text order_now_container">заказать</th>
+              <th>заказанно</th>
+              <th>обеспечено</th>
             </tr>
           </thead>
         </table>
@@ -532,7 +418,8 @@
     </section>
   </body>
 </html><%
-just_updated = REDIS.get('just_updated_'+sessionid)
-REDIS.del('just_updated_'+sessionid) if just_updated
+oju_key = 'outgoing_just_updated_'+sessionid+'_'+PORT.to_s
+just_updated = REDIS.get(oju_key)
+REDIS.del(oju_key) if just_updated
 nil
 %>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="/index+incoming+requisites.js"></script>
+    <script type="text/javascript">
+    document.addEventListener("DOMContentLoaded", function(){
+      var result = <% require('requisites.rb'); @requisites = Requisites.new; @requisites.run; @requisites.result %>,
+          iteration_index = 0,
+          item_frame = document.getElementById('item_frame');
+      for(var item in result) {
+        var tr = document.createElement('tr'),
+            svalues = result[item],
+            fvalues = ['','name','inn','kpp','yur_address','ogrn','okved','bank','bik','cor_account','phone'];
+        fvalues.forEach(function(key) {
+          var td = document.createElement('td'),
+              ival = svalues[key];
+          if(key=='name' || key=='long_name' || key=='yur_address') {
+            td.classList.add('long_text');
+            if(ival && ival.length > 45) td.setAttribute('title', ival);
+          } else if(key=='okved' || key=='bank' || key=='inn' || key=='kpp') {
+            td.classList.add('medium_text');
+            if(ival && ival.length > 10) td.setAttribute('title', ival);
+          } else if(key=='') {
+            td.classList.add('short_text');
+          }
+          if(key=='') {
+            td.innerHTML = '<input class="id_checkbox" type="checkbox" name="id[]" value=' + iteration_index + '>';
+          } else {
+            td.innerHTML = ival;
+          }
+          tr.appendChild(td);
+        });
+        main_table.children[0].appendChild(tr);
+        iteration_index += 1;
+      }
+      document.getElementById('add').onclick = function() {
+        item_frame.style.height = '848px';
+        item_frame.src = '/requisite_form.html';
+        item_frame.onload = function(){
+          item_frame.style.display = overlay.style.display = 'block';
+        }
+      }
+      overlay.onclick = function() {
+        item_frame.style.display = overlay.style.display = 'none';
+      }
+      document.addEventListener('keydown',function(event) {
+        if(event.key == 'Escape') item_frame.style.display = overlay.style.display = 'none';;
+      });
+      document.getElementById('remove').onclick = function() {
+        document.getElementById('delete_requisites').submit();
+        item_frame.style.height = '50px';
+        item_frame.onload = function(){
+          item_frame.style.display = overlay.style.display = 'block';
+        }
+      }
+      setTimeout(reload_data, 2000);
+    });
+    </script>
+    <link rel="stylesheet" type="text/css" href="/index+incoming+requisites.css">
+    <style type="text/css">
+      #item_frame {
+        width: 400px;
+        left: calc(50% - 200px);
+      }
+    </style>
+    <title>отгрузки</title>
+  </head>
+  <body>
+    <form action="/incoming.html" id="settings">
+      <input type="button" id="add" value="➕" title="добавить">
+      <span class="delimier"></span>
+      <input type="button" id="remove" value="✘" title="удалить">
+      <div id="indicator" title="передача данных"></div>
+      <div page="/requisites.html" class="switch_to current">реквизиты</div>
+      <div page="/incoming.html" class="switch_to">входящие</div>
+      <div page="/" class="switch_to">исходящие</div>
+    </form>
+    <section>
+      <div class="tbl-header" style="padding-right: 6px;">
+        <table id="head_table" cellpadding="0" cellspacing="0" border="0">
+          <thead>
+            <tr>
+              <th class="short_text"></th>
+              <th class="long_text">псевдоним</th>
+              <th class="medium_text">ИНН</th>
+              <th class="medium_text">КПП</th>
+              <th class="long_text">юр. адрес</th>
+              <th>ОГРН</th>
+              <th class="medium_text">ОКВЭД</th>
+              <th class="medium_text">банк</th>
+              <th>БИК</th>
+              <th>кор. счёт</th>
+              <th>телефон</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+      <div class="tbl-content">
+        <form id="delete_requisites" action="/delete_requisites" method="POST" target="item_frame">
+          <table id="main_table">
+            <tbody>
+            </tbody>
+          </table>
+        </form>
+        <iframe id="item_frame" name="item_frame" src="/requisite_form.html"></iframe>
+      </div>
+    </section>
+    <div id="overlay"></div>
+  </body>
+</html>

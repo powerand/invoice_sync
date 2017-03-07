@@ -1,4 +1,4 @@
-#!/usr/bin/env ruby
+#!/usr/local/bin/ruby
 
 $:.unshift File.dirname(__FILE__)
 
@@ -10,8 +10,8 @@ if %w(stop restart).include?(ARGV[0])
 end
 
 pid = Process.fork do
-  $stdout.reopen(File.join('log', "out.log"), "a")
-  $stderr.reopen(File.join('log', "err.log"), "a")
+  $stdout.reopen(File.join(File.dirname(__FILE__), 'log', "out.log"), "a")
+  $stderr.reopen(File.join(File.dirname(__FILE__), 'log', "err.log"), "a")
   require 'server.rb'
 end
 

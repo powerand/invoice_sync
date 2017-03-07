@@ -1,0 +1,129 @@
+<style type="text/css">
+  body {
+    font-family: 'Roboto', sans-serif;
+    font-size: 12px;
+    margin: 0;
+  }
+  form {
+    text-align: right;
+  }
+  textarea, input[type=text] {
+    width: 200px;
+  }
+  p, h3 {
+    margin: 1em;
+  }
+  input[type=submit], input[type=button], input[type=reset] {
+    width: 50%;
+    float: left;
+  }
+  input[type=reset] {
+    width: calc(50% - 1em);
+    margin-right: 1em;
+  }
+  .suggestions-suggestions {
+    text-align: left;
+  }
+  .notice {
+    color: green;
+  }
+  .error {
+    color: red;
+  }
+</style>
+<link href="/suggestions.css" type="text/css" rel="stylesheet" />
+<script type="text/javascript" src="/jquery.min.js"></script>
+<script type="text/javascript" src="/jquery.suggestions.min.js"></script>
+<script type="text/javascript">
+function parse_and_fill(text) {
+  var buff;
+  requisite.name.value = requisite.name.pvalue = (buff = text.match(/\"(.+?)\"/)) && buff[1];
+  requisite.long_name.value = requisite.long_name.pvalue = (buff = text.match(/(.+?)\,/)) && buff[1];
+  requisite.inn.value = requisite.inn.pvalue = (buff = text.match(/ИНН:?\s+(\d{10}|\d{12})/i)) && buff[1];
+  requisite.kpp.value = requisite.kpp.pvalue = (buff = text.match(/КПП:?\s+(\d{9})/i)) && buff[1];
+  requisite.yur_address.value = requisite.yur_address.pvalue = (buff = text.match(/г(?:\.|ород).+?\,\s*ул(?:\.|ица).+?(?:\,\s*(?:д\.|дом|к\.|кор\.|копр\.|корпус|с\.|ст\.|стр\.|строение).+?)+/i)) && buff[0];
+  requisite.checking_account.value = requisite.checking_account.pvalue = (buff = text.match(/\d{20}/)) && buff[0];
+  requisite.bik.value = requisite.bik.pvalue = (buff = text.match(/БИК:?\s+(\d{9})/i)) && buff[1];
+  requisite.bank.value = requisite.bank.pvalue = (buff = text.match(/Банк:?\s+(.+?)\,/i)) && buff[1];
+  requisite.cor_account.value = requisite.cor_account.pvalue = (buff = text.match(/Кор(\.|респондентский) сч[ёе]т:?\s+(\d{20})/i)) && buff[1];
+  requisite.phone.value = requisite.phone.pvalue = (buff = text.match(/(?:\+7|8)\s*\(?\d{3}\)?\s*\d{3}\s*\-?\s*\d{2}\s*\-?\s*\d{2}/)) && buff[0];
+}
+document.addEventListener("DOMContentLoaded", function(){
+  document.getElementById('alldata').addEventListener('paste', function(event) {
+    var clipboardData = event.clipboardData || window.clipboardData;
+    parse_and_fill(clipboardData.getData('Text'));
+  });
+  $("input[name=inn]").suggestions({
+    token: "ccca3e479349705610883d93c4a1e613e3e5a940",
+    type: "PARTY",
+    count: 5,
+    onSelect: function(suggestion) {
+      requisite.name.value = requisite.name.pvalue || suggestion.data.name.full;
+      requisite.long_name.value = requisite.long_name.pvalue || suggestion.data.name.short_with_opf;
+      requisite.inn.value = suggestion.data.inn;
+      requisite.kpp.value = requisite.kpp.pvalue || suggestion.data.kpp;
+      requisite.yur_address.value = requisite.yur_address.pvalue || suggestion.data.address.value;
+      requisite.ogrn.value = requisite.ogrn.pvalue = suggestion.data.ogrn;
+      requisite.okpo.value = requisite.okpo.pvalue = suggestion.data.okpo;
+      requisite.okved.value = requisite.okved.pvalue = suggestion.data.okved;
+    }
+  });
+  $("input[name=bank]").suggestions({
+    token: "ccca3e479349705610883d93c4a1e613e3e5a940",
+    type: "BANK",
+    count: 5,
+    onSelect: function(suggestion) {
+      requisite.bik.value = requisite.bik.pvalue || suggestion.data.bic;
+      requisite.cor_account.value = requisite.cor_account.pvalue || suggestion.data.correspondent_account;
+    }
+  });
+  document.getElementById('alldata').onchange = function() {
+    if(this.value == '') {
+      requisite.name.pvalue = requisite.long_name.pvalue = requisite.inn.pvalue = requisite.kpp.pvalue = requisite.yur_address.pvalue = requisite.checking_account.pvalue = requisite.bik.pvalue = requisite.bank.pvalue = requisite.cor_account.pvalue = requisite.phone.pvalue = '';
+    }
+  }
+});
+</script>
+<%
+if $params.empty?
+  %{<h3>Новая фирма:</h3>}
+elsif $params.keys == 'id'
+  %{<h3>Изменить фирму:</h3>}
+else
+  key = $params.delete(:id)
+  if key
+    REDIS.srem('requisites', key)
+    REDIS.sadd('requisites', $params) ? %{<h3 class="notice">Фирма изменена</h3>} : %{<h3 class="error">Не смог изменить фирму, давайте заново:</h3>}
+  else
+    REDIS.sadd('requisites', $params) ? %{<h3 class="notice">Новая фирма добавлена</h3>} : %{<h3 class="error">Не смог добавить новую фирму, давайте заново:</h3>}
+  end
+end
+%>
+<form name="requisite" method="POST">
+  <p><label>псевдоним: <input type="text" name="name" placeholder="БАРС" required></label></p>
+  <p><label>название: <input type="text" name="long_name" placeholder='ООО "БАРС"' required></label></p>
+  <p><label><b>ИНН: </b><input type="text" name="inn" pattern="\d{10}|\d{12}" placeholder="7716777376" required></label></p>
+  <p><label>КПП: <input type="text" name="kpp" pattern="\d{9}" placeholder="771601001"></label></p>
+  <p><label>юридический адрес: <textarea name="yur_address" rows="3" placeholder="Россия, 129337, г.Москва, Ярославское шоссе, д.116, корп.2"></textarea></label></p>
+  <p><label>фактический адрес: <textarea name="address" rows="3" placeholder="Россия, 129337, г.Москва, Ярославское шоссе, д.116, корп.2"></textarea></label></p>
+  <p><label>грузоотправитель: <input type="text" name="box_sender"></label></p>
+  <p><label>ОГРН: <input type="text" name="ogrn" pattern="\d{13}" placeholder="5077746887312"></label></p>
+  <p><label>ОКПО: <input type="text" name="okpo" pattern="\d{8}|\d{10}" placeholder="11397147"></label></p>
+  <p><label>ОКВЭД: <input type="text" name="okved" pattern="\d{1,2}\.?\d{0,2}\.?\d{0,2}" placeholder="02.10.2"></label></p>
+  
+  <p><label><b>банк: </b><input type="text" name="bank" placeholder='АО "ГЛОБОЭКСБАНК"' required></label></p>
+  <p><label>БИК: <input type="text" name="bik" pattern="\d{9}" placeholder="044525243"></label></p>
+  <p><label>кор. счёт: <input type="text" name="cor_account" pattern="\d{20}" placeholder="30101810000000000243"></label></p>
+  <p><label><b>расчётный счёт: </b><input type="text" name="checking_account" pattern="\d{20}" placeholder="40702810200270031299"></label></p>
+
+  <p><label><b>руководитель: </b><input type="text" name="director_name" placeholder="Мкртчян Борис Микаелович" required></label></p>
+  <p><label><b>главный бухгалтер: </b><input type="text" name="bux_name" placeholder="Мкртчян Борис Микаелович" required></label></p>
+
+  <p><label>телефон: <input type="text" name="phone" pattern="\+7\s*\(\d{3}\)\s*\d{3}-\d{2}-\d{2}" placeholder="+7(800)500-43-76"></label></p>
+  <p><label>e-mail: <input type="text" name="email" placeholder="info@funale.ru"></label></p>
+  <p><label>сайт: <input type="text" name="site" placeholder="www.funale.ru"></label></p>
+  <p><label>доп. поле: <input type="text" name="additional"></label></p>
+  <p><label><b>Все данные: </b><textarea id="alldata" rows="2"></textarea></label></p>
+  <p><input type="reset" value="сбросить"></p>
+  <p><input type="submit" value="создать"></p>
+</form>

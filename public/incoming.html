@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>отгрузки</title>
+    <script type="text/javascript" src="/index+incoming+requisites.js"></script>
+    <script type="text/javascript">
+    function any_checked() {
+      var any_checked = false;
+      Array.prototype.forEach.call(document.getElementsByClassName('id_checkbox'), function(id_checkbox) {
+        if(id_checkbox.checked) {
+          any_checked = true;
+          return;
+        }
+      });
+      return any_checked;
+    }
+    document.addEventListener("DOMContentLoaded", function(){
+      var result = <% require('incoming.rb'); @incoming = Incoming.new; @incoming.run; @incoming.result %>,
+          requisites = <% @incoming.requisites %>,
+          last_changed_checkbox,
+          shift_pressed,
+          print_subject_visual = document.getElementById('print_subject_visual'),
+          print_subject = document.getElementById('print_subject'),
+          print_table = document.getElementById('print_table'),
+          item_frame = document.getElementById('item_frame'),
+          print_controls = document.getElementById('print_controls'),
+          company = document.getElementById('company'),
+          prev = document.getElementById('prev'),
+          next = document.getElementById('next');
+      for(var item in result) {
+        var tr = document.createElement('tr'),
+            svalues = result[item];
+        for(var key in svalues) {
+          var td = document.createElement('td'),
+              ival = svalues[key];
+          if(key == 'FIO' || key == 'ADDRESS') {
+            td.classList.add('long_text');
+            if(ival && ival.length > 45) td.setAttribute('title', ival);
+          }
+          if(key == 'DELIVERY_DATE' | key == 'DATE') {
+            td.classList.add('medium_text');
+            if(ival && ival.length > 10) td.setAttribute('title', ival);
+          }
+          if(key == 'ID') {
+            td.innerHTML =
+              '<label class="id_checkbox_label">' +
+              '<input id="' + ival + '" class="id_checkbox" type="checkbox" name="id[]" value=' + ival + '_' + svalues['SITE'] + '>' + ival +
+              '</label>';
+            td.classList.add('medium_text');
+          } else {
+            td.innerHTML = ival;
+          }
+          tr.appendChild(td);
+        }
+        main_table.children[0].appendChild(tr);
+      }
+      requisites.forEach(function(requisite) {
+        var option = document.createElement('option');
+        option.textContent = requisite.name;
+        option.value = requisite.inn;
+        company.appendChild(option);
+      });
+      tbl_content.scrollTop = localStorage.getItem(document.location.pathname + '_scroll_top');
+      document.addEventListener('keydown', function() {
+        shift_pressed = event.shiftKey;
+      });
+      document.addEventListener('keyup', function() {
+        shift_pressed = event.shiftKey;
+      });
+      Array.prototype.forEach.call(document.getElementsByClassName('id_checkbox'), function(id_checkbox) {
+        id_checkbox.onchange = function() {
+          if(shift_pressed) {
+            var ccctr = this.parentElement.parentElement.parentElement,
+                glcctr = last_changed_checkbox.parentElement.parentElement.parentElement,
+                ascord = which_child(this.parentElement.parentElement.parentElement) > which_child(last_changed_checkbox.parentElement.parentElement.parentElement);
+            for(var lcctr = glcctr; lcctr != ccctr; lcctr = ascord ? lcctr.nextElementSibling : lcctr.previousElementSibling) {
+              if(lcctr == glcctr) continue;
+              var checkbox = lcctr.children[0].children[0].children[0];
+              checkbox.checked = !checkbox.checked;
+            }
+          }
+          last_changed_checkbox = this;
+        }
+      });
+      Array.prototype.forEach.call(document.getElementsByClassName('id_checkbox_label'), function(id_checkbox_label) {
+        id_checkbox_label.onmousedown = function() {
+          return false;
+        }
+      });
+      overlay.onclick = function() {
+        item_frame.style.display = overlay.style.display = print_controls.style.display = 'none';
+      }
+      document.addEventListener('keydown',function(event) {
+        if(event.key == 'Escape') item_frame.style.display = overlay.style.display = print_controls.style.display = 'none';;
+      });
+      Array.prototype.forEach.call(print_subject_visual.children, function(option) {
+        option.onmouseenter = function() {
+          this.selected = true;
+          fire_event(print_subject_visual, 'change');
+          print_subject_visual.focus();
+        }
+      });
+      print_table.onmousedown = function() {
+        if(!any_checked()) return false;
+        this.nextElementSibling.style.display = 'block';
+        print_subject_visual.children[0].selected = true;
+        setTimeout(function(){ print_subject_visual.focus(); }, 0);
+      }
+      document.onmouseup = function() {
+        print_subject_visual.style.display = 'none';
+      }
+      print_subject_visual.onmouseup = function() {
+        this.style.display = 'none';
+        document.getElementById('print_orders').submit();
+        item_frame.onload = function() {
+          item_frame.style.display = overlay.style.display = 'block';
+          print_controls.style.display = 'block';
+          fire_event(company, 'change');
+        }
+      }
+      print_subject_visual.onchange = function() {
+        print_subject.value = this.value;
+      }
+      document.getElementById('print').onclick = function() {
+        window.frames['item_frame'].print();
+      }
+      company.onchange = function() {
+        var thas = this;
+        requisites.forEach(function(requisite) {
+          if(requisite.inn == thas.value) {
+            Array.prototype.forEach.call(window.frames['item_frame'].document.getElementsByClassName('company'), function(inframe_company) {
+              inframe_company.innerHTML = '';
+              inframe_company.innerHTML += '<b>ПОСТАВЩИК:</b> ' + requisite.long_name +
+                (requisite.yur_address ? '<br>Адрес: ' + requisite.yur_address : '') +
+                (requisite.phone ? '<br>Телефон: ' + requisite.phone : '') +
+                (requisite.inn ? '<br>ИНН: ' + requisite.inn : '') +
+                (requisite.kpp ? '<br>КПП: ' + requisite.kpp : '') +
+                '<br>Банковские реквизиты:' +
+                '<br>&nbsp;&nbsp;' + (requisite.checking_account ? 'р/с: ' + requisite.checking_account + ' ' : '') +
+                'в ' + requisite.bank +
+                (requisite.cor_account ? '<br>&nbsp;&nbsp;к/с: ' + requisite.cor_account : '') +
+                (requisite.bik ? '<br>&nbsp;&nbsp;БИК ' + requisite.bik : '');
+            });
+            Array.prototype.forEach.call(window.frames['item_frame'].document.getElementsByClassName('director_name'), function(inframe_director_name) {
+              if(requisite.director_name) inframe_director_name.value = '/ ' + requisite.director_name + ' /';
+            });
+            Array.prototype.forEach.call(window.frames['item_frame'].document.getElementsByClassName('bux_name'), function(inframe_bux_name) {
+              if(requisite.bux_name) inframe_bux_name.value = '/ ' + requisite.bux_name + ' /';
+            });
+          }
+        });
+      }
+      setTimeout(reload_data, 2000);
+    });
+    </script>
+    <link rel="stylesheet" type="text/css" href="/index+incoming+requisites.css">
+    <style type="text/css">
+      #print_subject_visual {
+        position: absolute;
+        display: none;
+        top: 0;
+        left: -30px;
+        overflow: auto;
+        width: 150px;
+        text-align: center;
+        box-shadow: 0 0 3px 3px #000;
+      }
+      #print_container {
+        position: relative;
+      }
+      #print_controls {
+        display: none;
+        position: fixed;
+        width: 100px;
+        height: 21cm;
+        left: calc(50% + 14.85cm + 6px);
+        top: calc(50% - 10.5cm);
+        background-color: #000;
+        box-shadow: 0 0 3px 3px #000;
+        vertical-align: bottom;
+        z-index: 3;
+      }
+      #print, #company {
+        width: 100%;
+        position: absolute;
+      }
+      #print {
+        bottom: 0;
+      }
+      #prev, #next {
+        width: 50%;
+        position: absolute;
+        top: 25px;
+      }
+      #next {
+        left: 50%;
+      }
+      #item_frame {
+        padding: 5mm;
+      }
+    </style>
+  </head>
+  <body>
+    <form action="/incoming.html" id="settings">
+      <select name="date_subject" id="date_subject">
+        <option <% 'selected ' if @incoming.date_subject == 'created' %>value="created">создан</option>
+        <option <% 'selected ' if @incoming.date_subject == 'deliver' %>value="deliver">отгрузка</option>
+      </select>
+      :
+      <label>от - <input type="date" name="from" value="<% @incoming.date_from %>"></label>
+      <label>до - <input type="date" name="to" value="<% @incoming.date_to %>"></label>
+      <span class="delimier"></span>
+      <input type="submit" value="ок" title="показать товар для выбранных дат">
+      <span class="delimier"></span>
+      <span id="print_container">
+        <input type="button" id="print_table" value="⎙" title="печать">
+        <select id="print_subject_visual" size="5">
+          <option value="form4">товарная накладная</option>
+          <option value="form1">старая накладная</option>
+        </select>
+      </span>
+      <div id="indicator" title="передача данных"></div>
+      <div page="/requisites.html" class="switch_to">реквизиты</div>
+      <div page="/incoming.html" class="switch_to current">входящие</div>
+      <div page="/" class="switch_to">исходящие</div>
+    </form>
+    <section>
+      <div class="tbl-header" style="padding-right: 6px;">
+        <table id="head_table" cellpadding="0" cellspacing="0" border="0">
+          <thead>
+            <tr>
+              <th class="medium_text">номер</th>
+              <th class="medium_text">создан</th>
+              <th class="medium_text">дата отгрузки</th>
+              <th>сайт</th>
+              <th class="long_text">ФИО</th>
+              <th>город</th>
+              <th class="long_text">адрес</th>
+              <th>метро</th>
+              <th>доставка</th>
+              <th>оплата</th>
+              <th>сумма</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+      <div class="tbl-content">
+        <form id="print_orders" action="/print_orders" target="item_frame">
+          <table id="main_table">
+            <tbody>
+            </tbody>
+          </table>
+          <input type="hidden" name="print_subject" id="print_subject">
+        </form>
+        <iframe id="item_frame" name="item_frame"></iframe>
+        <div id="print_controls">
+          <select id="company"></select>
+          <input type="button" id="print" value="ОК">
+        </div>
+      </div>
+    </section>
+    <div id="overlay"></div>
+  </body>
+</html><%
+iju_key = 'incoming_just_updated_'+sessionid+'_'+PORT.to_s
+just_updated = REDIS.get(iju_key)
+REDIS.del(iju_key) if just_updated
+nil
+%>

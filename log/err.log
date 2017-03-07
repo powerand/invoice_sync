@@ -33,3 +33,18 @@ umount: /root/invoice_sync/public: device is busy.
 umount: /root/invoice_sync/public: device is busy.
         (In some cases useful info about processes that use
          the device is found by lsof(8) or fuser(1))
+/root/invoice_sync/server.rb:159:in `gsub': invalid byte sequence in US-ASCII (ArgumentError)
+	from /root/invoice_sync/server.rb:159:in `block (2 levels) in <top (required)>'
+	from /usr/local/lib/ruby/2.4.0/timeout.rb:93:in `block in timeout'
+	from /usr/local/lib/ruby/2.4.0/timeout.rb:33:in `block in catch'
+	from /usr/local/lib/ruby/2.4.0/timeout.rb:33:in `catch'
+	from /usr/local/lib/ruby/2.4.0/timeout.rb:33:in `catch'
+	from /usr/local/lib/ruby/2.4.0/timeout.rb:108:in `timeout'
+	from /root/invoice_sync/server.rb:101:in `block in <top (required)>'
+	from /root/invoice_sync/server.rb:98:in `loop'
+	from /root/invoice_sync/server.rb:98:in `<top (required)>'
+	from /usr/local/lib/ruby/2.4.0/rubygems/core_ext/kernel_require.rb:55:in `require'
+	from /usr/local/lib/ruby/2.4.0/rubygems/core_ext/kernel_require.rb:55:in `require'
+	from ./server:15:in `block in <main>'
+	from ./server:12:in `fork'
+	from ./server:12:in `<main>'

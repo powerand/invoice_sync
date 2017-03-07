@@ -1,0 +1,161 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html xmlns:v="urn:schemas-microsoft-com:vml"
+xmlns:o="urn:schemas-microsoft-com:office:office"
+xmlns:w="urn:schemas-microsoft-com:office:word"
+xmlns="http://www.w3.org/TR/REC-html40">
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=UTF-8">
+<title langs="ru">Счет</title>
+<style>
+<!--
+/* Style Definitions */
+p.MsoNormal, li.MsoNormal, div.MsoNormal
+  {mso-style-parent:"";
+  margin:0cm;
+  margin-bottom:.0001pt;
+  mso-pagination:widow-orphan;
+  font-size:12.0pt;
+  font-family:"Times New Roman";
+  mso-fareast-font-family:"Times New Roman";}
+p
+  {margin-right:0cm;
+  mso-margin-top-alt:auto;
+  mso-margin-bottom-alt:auto;
+  margin-left:0cm;
+  mso-pagination:widow-orphan;
+  font-size:12.0pt;
+  font-family:"Times New Roman";
+  mso-fareast-font-family:"Times New Roman";}
+@page Section1
+  {size:595.3pt 841.9pt;
+  margin:2.0cm 42.5pt 2.0cm 3.0cm;
+  mso-header-margin:35.4pt;
+  mso-footer-margin:35.4pt;
+  mso-paper-source:0;}
+div.Section1
+  {page:Section1;}
+-->
+.logo {
+  width: 260px;
+  height: 150px;
+  position: absolute;
+  right: 12px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+@media print {
+  p.company {
+    page-break-before:always;
+  }
+}
+div.Section1 {
+  min-height: 20cm;
+}
+body {
+  margin: 0;
+  overflow: hidden;
+}
+@page  
+{ 
+  size: auto;
+  margin: 5mm;
+} 
+</style>
+</head>
+
+<body bgcolor=white lang=RU style='tab-interval:35.4pt;'>
+<div class=Section1>
+<div class="logo" style="background-image: url(/images/logos/#{v['SITE']}.jpg);"></div>
+<p class="company" style="margin-top:0;"><b>ПОСТАВЩИК:</b>
+ООО «БАРС»<br>
+Адрес: Россия, 129337, г. Москва, Ярославское шоссе, д.116, корп.2<br>
+Телефон: 8 (495) 540-43-76, 8 (495) 00-33-598<br>
+ИНН: 7716777376 / КПП: 771601001<br>
+Банковские реквизиты:<br>
+р/с 40702810200270031299 в ЗАО «ГЛОБЭКСБАНК» г. <br>
+к/с 30101810000000000243<br>
+БИК 044525243</p>
+
+<p><b>ЗАКАЗЧИК: </b>#{v['FIO']}
+#{'<br>Адрес: ' + v['ADDRESS'] if v['ADDRESS'] && !v['ADDRESS'].empty?}
+#{'<br>Местоположение: ' + v['CITY'] if v['CITY'] && !v['CITY'].empty?}
+<br>Телефон: #{v['PHONE']}<br>Способ оплаты: #{v['PAYMENT']}</p>
+<p><b>ТОВАРНАЯ НАКЛАДНАЯ К ЗАКАЗУ №:</b> #{v['ID']} от #{v['DATE']}, отгрузка #{v['DELIVERY_DOC_NUM']} <input size="10" style="border:0px solid #000000;font-size:14px;font-style:bold;" type="text" value="#{v['DELIVERY_DOC_DATE']}"></p>
+
+  <table border="0" cellspacing="0" cellpadding="2" width="100%">
+    <tr bgcolor="#E2E2E2">
+      <td align="center" style="border: 1pt solid #000000; border-right:none;">№</td>
+      <td align="center" style="border: 1pt solid #000000; border-right:none;">Предмет счета</td>
+      <td nowrap align="center" style="border: 1pt solid #000000; border-right:none;">Кол-во</td>
+      <td nowrap align="center" style="border: 1pt solid #000000; border-right:none;">Цена, руб</td>
+      <td nowrap align="center" style="border: 1pt solid #000000;">Сумма, руб</td>
+    </tr>\`+
+v['PRODUCT_NAMES'].each_with_index.map do |product_name, index|
+  price = (v['PRODUCT_QUANTITYS'][index]*v['PRODUCT_PRICES'][index]).round(2)
+  v['PRODUCTS_TOTAL_PRICE'] ||= 0
+  v['PRODUCTS_TOTAL_PRICE'] += price
+  %{
+    <tr valign="top">
+      <td bgcolor="#ffffff" style="border: 1pt solid #000000; border-right:none; border-top:none;">#{index+1}</td>
+      <td bgcolor="#ffffff" style="border: 1pt solid #000000; border-right:none; border-top:none;">#{product_name}</td>
+      <td align="right" bgcolor="#ffffff" style="border: 1pt solid #000000; border-right:none; border-top:none;">#{v['PRODUCT_QUANTITYS'][index]}</td>
+      <td align="right" bgcolor="#ffffff" style="border: 1pt solid #000000; border-right:none; border-top:none;">#{v['PRODUCT_PRICES'][index]}</td>
+      <td align="right" bgcolor="#ffffff" style="border: 1pt solid #000000; border-top:none;">#{price}</td>
+    </tr>
+  }
+end.join+
+\`  <tr>
+      <td align="right" bgcolor="#ffffff" colspan="4" style="border: 1pt solid #000000; border-right:none; border-top:none;">Итого:</td>
+      <td align="right" bgcolor="#ffffff" style="border: 1pt solid #000000; border-top:none;">#{v['PRODUCTS_TOTAL_PRICE'].round(2)}</td>
+    </tr>
+  </table>
+<p><b>Итого к оплате:</b> #{RuPropisju.rublej(v['PRODUCTS_TOTAL_PRICE'])}.</p>
+
+<i>
+  <ol style="font-size:13px;">
+    <li>Согласно ст. 26.1 "Закон о защите прав потребителей" покупатель вправе отказаться от товара ненадлежащего качества в течении 14 (четырнадцати) дней с момента доставки и при условии, что
+    сохранены его товарный вид, потребительские свойства, а также имеется документ, подтверждающий факт покупки товара.</li>
+    <li>Товар получен в надлежащем виде, услуги по доставке оказаны, п.1 настоящего соглашения мною прочитан.</li>
+    <li>Гарантийный срок на всю представленную в интернет-магазине продукцию составляет 12 месяцев. Точкой отсчета следует считать дату получения товара. Любое сервисное и гарантийное обслуживание проводится в офисе компании.</li>
+    <li>В случае, если при доставке товара надлежащего качества Вы отказываетесь от товара, Вы платите полную стоимость доставки: для Москвы она составляет #{v['PRICE_DELIVERY']} рублей, для остальных регионов - расчитывается по тарифам службы доставки.</li>
+    <li>В случае отказа от ранее оплаченного товара компания обязуется вернуть денежные средства не позднее 10 (десяти) дней с момента получения оригинала соответствующего заявления от покупателя, которое может быть предъявлено не позднее 14 (четырнадцати) дней после передачи товара.</li>
+    <li><b>Максимальное время, отведённое на демонстрацию и проверку товара, составляет 15 минут.</b></li>
+  </ol>
+</i>
+
+<table border=0 cellspacing=0 cellpadding=0 width="100%">
+<tr>
+<td width="20%">
+<p class=MsoNormal>Руководитель организации:</p>
+</td>
+<td width="40%">
+<p class=MsoNormal>_________ <input class="director_name" size="40" style="border:0px solid #000000;font-size:14px;font-style:bold;" type="text"></p>
+</td>
+<td width="40%">
+<p class=MsoNormal>Подпись покупателя _______________ / _______ /</p>
+</td>
+</tr>
+<tr>
+<td>
+<p class=MsoNormal>&nbsp;</p>
+</td>
+<td>
+<p class=MsoNormal>&nbsp;</p>
+</td>
+</tr>
+<tr>
+<td>
+<p class=MsoNormal>Гл. бухгалтер:</p>
+</td>
+<td>
+<p class=MsoNormal>_________ <input class="bux_name" size="40" style="border:0px solid #000000;font-size:14px;font-style:bold;" type="text"></p>
+</td>
+<td>
+<p class=MsoNormal><font size="2">Товар мною получен и проверен, претензий не имею</font></p>
+</td>
+</tr>
+</table>
+</div>
+</body>
+</html>

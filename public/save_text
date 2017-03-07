@@ -2,20 +2,19 @@
 require 'uri'
 stores = []
 text = nil
-@params.each do |key, val|
+$params.each do |key, val|
   if key == 'text'
     text = URI.unescape(val)
   else
-    val.split(HTML_DELIMIER).each_with_index do |key_part, index|
+    val.split('; ').each_with_index do |key_part, index|
       stores[index] ||= []
       stores[index] << key_part
     end
   end
 end
-stores.each_with_index do |store, index|
-  store.unshift '0'
-  texts = text.to_s.split('; ')
-  REDIS.set(store.join(HTML_DELIMIER), texts.size > 1 ? texts[index] : text)
+stores.each do |store|
+  store << '0'
+  REDIS.set(store.join(';%20'), text)
 end
-REDIS.set('just_updated_'+sessionid, true)
+REDIS.set('outgoing_just_updated_'+sessionid+'_'+PORT.to_s, true)
 %>
